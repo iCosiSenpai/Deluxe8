@@ -11,12 +11,7 @@
 #endif
 #endif
 
-#include "deluxe8/overlay.h"
-
-// On Linux the same headers pull in Xlib, whose macros clash with Eden's enums (WebResult::Code::Success, used by
-// network/room_member.h): drop them, as Eden's present/layer.cpp does.
-#undef Success
-#undef BadValue
+#include "deluxe8/overlay.h" // first: it also drops Xlib's Success/BadValue macros (Linux)
 
 #include <algorithm>
 #include <array>

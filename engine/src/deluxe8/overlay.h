@@ -11,6 +11,11 @@
 
 #include "video_core/vulkan_common/vulkan.h"
 
+// On Linux vulkan.h pulls in Xlib, whose Success and BadValue macros break Eden's enums (nvdata.h, Loader::ResultStatus,
+// WebResult::Code) in every file that includes this header: drop them, as Eden's present/layer.cpp does.
+#undef Success
+#undef BadValue
+
 union SDL_Event;
 
 namespace Deluxe8::Overlay {
