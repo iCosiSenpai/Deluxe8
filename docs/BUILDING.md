@@ -10,12 +10,12 @@ Rust (stable), Node.js with pnpm. No administrator rights are needed: LLVM, CMak
 downloaded into `.cache/`.
 
 ```powershell
-pwsh tools/engine.ps1 all          # Compat engine -> out/engine/win-x64 (deluxe8-engine.exe, deluxe8-room.exe)
+pwsh tools/engine.ps1 all          # Emulator engine (Compat) -> out/engine/win-x64 (deluxe8-engine.exe, deluxe8-room.exe)
 pwsh tools/native.ps1 all          # Native engine toolchain -> out/native/win-x64 (~45 min the first time)
 cd apps/launcher; pnpm install; pnpm tauri dev
 ```
 
-Installer with the Compat engine inside: `pnpm tauri build --config src-tauri/tauri.bundle-windows.conf.json` (the plain
+Installer with the Emulator engine inside: `pnpm tauri build --config src-tauri/tauri.bundle-windows.conf.json` (the plain
 `pnpm tauri build` leaves the engine out). Signed releases: `pwsh tools/release.ps1 -Thumbprint ...` or the `release.yml`
 workflow, see [RELEASING.md](RELEASING.md). Toolchain downloads (LLVM, CMake, glslang) are pinned by SHA-256 in both
 scripts; bump URL and hash together.
@@ -25,7 +25,7 @@ page when it is missing (see [ARCHITECTURE.md](ARCHITECTURE.md#components-downlo
 also builds a DLSS plugin with MSVC into `out/native/dlss-local/` for this machine only; the launcher builds its own copy
 with the engine's toolchain.
 
-### Compat engine: day-to-day changes
+### Emulator engine (Compat): day-to-day changes
 
 The Eden tree is `.cache/engine/eden` on branch `deluxe8`; `src/deluxe8` there is a junction to `engine/src/deluxe8`.
 
@@ -46,7 +46,7 @@ The Eden tree is `.cache/engine/eden` on branch `deluxe8`; `src/deluxe8` there i
 Packages on Ubuntu 26.04 / Debian 13 (from Eden's `docs/Deps.md`, without the Qt ones):
 
 ```sh
-sudo apt-get install autoconf cmake g++ gcc clang git glslang-tools libglu1-mesa-dev libhidapi-dev libpulse-dev libtool \
+sudo apt-get install autoconf cmake g++ gcc clang git patch glslang-tools libglu1-mesa-dev libhidapi-dev libpulse-dev libtool \
   libudev-dev libxext-dev mesa-common-dev nasm ninja-build catch2 liblz4-dev libzstd-dev libssl-dev libavfilter-dev \
   libavcodec-dev libswscale-dev pkg-config zlib1g-dev libva-dev libvdpau-dev libvulkan-dev spirv-tools spirv-headers \
   libusb-1.0-0-dev libxbyak-dev libboost-dev libboost-fiber-dev libboost-context-dev libsdl3-dev libopus-dev \

@@ -9,7 +9,8 @@ copy of Mario Kart 8 Deluxe and want to play **their own copy** on their PC.
 
 - It ships **no Nintendo code or content**: no game files, keys, firmware, system software, artwork, music or saves.
 - It **never downloads** games, keys or firmware, and it never connects to Nintendo's servers. Online play uses room
-  servers run by players (local wireless and LAN over the internet).
+  servers run by players (local wireless and LAN over the internet) or the community-run Nextendo Network, an
+  independent replacement of the console's online service that the player signs up to with their own free account.
 - The player supplies the game, the update and the DLC as dumped from their own console, plus the console's keys
   (`prod.keys`, `title.keys`) and firmware. Whether dumping and decrypting your own copy is allowed depends on where you
   live: check your local law.
@@ -22,19 +23,23 @@ documentation) is licensed under the **GNU General Public License v3.0 or later*
 
 | Component | Licence | How Deluxe8 uses it |
 |---|---|---|
-| [Eden](https://git.eden-emu.dev/eden-emu/eden) (yuzu / sudachi lineage) | GPL-3.0-or-later | The Compat engine shipped in the installer is Eden at the commit in [`engine/upstream.json`](../engine/upstream.json) plus `engine/patches` and `engine/src/deluxe8`; all of it is in this repository or upstream, at the tag of the release. `LICENSE-eden.txt` is installed next to the engine. |
+| [Eden](https://git.eden-emu.dev/eden-emu/eden) (yuzu / sudachi lineage) | GPL-3.0-or-later | The Emulator engine shipped in the installer is Eden at the commit in [`engine/upstream.json`](../engine/upstream.json) plus `engine/patches` and `engine/src/deluxe8`; all of it is in this repository or upstream, at the tag of the release. `LICENSE-eden.txt` is installed next to the engine. |
 | [Racing 8 DX Recomp](https://github.com/galarianpikachu2021-hue/Racing-8-DX-Recomp) | GPL-3.0 | The Native engine. Downloaded by the launcher from that project's GitHub releases (pinned by SHA-256), not shipped by Deluxe8. Its own third-party notices come with it. |
-| [Dear ImGui](https://github.com/ocornut/imgui) | MIT | The Compat engine's in-game overlay. |
+| [Ryujinx Nextendo](https://git.nextendo.network/NextendoNetwork/Ryujinx-Nextendo) (© Ryujinx Team and contributors, Nextendo Network contributors) | MIT | The Online engine. Downloaded by the launcher from the Nextendo team's releases (pinned by SHA-256), not shipped by Deluxe8; `LICENSE.txt` and `THIRDPARTY.md` come with it. The Nextendo Network servers are a separate service run by its own volunteers (their code: PolyForm Shield 1.0.0). |
+| [Dear ImGui](https://github.com/ocornut/imgui) | MIT | The Emulator engine's in-game overlay. |
 | [Archivo](https://github.com/Omnibus-Type/Archivo) by Omnibus-Type | SIL Open Font License 1.1 | The launcher's and overlay's typeface; `OFL.txt` is installed with the font. |
 | [Tauri](https://tauri.app), [Svelte](https://svelte.dev) and the Rust crates and npm packages in the lock files | MIT and/or Apache-2.0 (a few BSD, ISC, Zlib, MPL-2.0) | The launcher. |
 | AMD FidelityFX (FSR) | MIT | Part of the Native engine's plugins. |
 | NVIDIA DLSS SDK | NVIDIA DLSS SDK licence | **Not distributed.** When the player turns DLSS on, the launcher shows the licence and downloads the SDK files from [github.com/NVIDIA/DLSS](https://github.com/NVIDIA/DLSS) straight to their PC, where the plugin is compiled. The files never leave that PC. |
 | Khronos Vulkan headers | Apache-2.0 / MIT | Downloaded with the DLSS SDK to compile the plugin. |
-| Lossless Scaling | proprietary | **Not distributed.** If the player owns it on Steam, the Compat engine uses their own `Lossless.dll`. |
+| Lossless Scaling | proprietary | **Not distributed.** If the player owns it on Steam, the Emulator engine uses their own `Lossless.dll`. |
 
 ## Trademarks
 
-Nintendo, Nintendo Switch, Mario Kart and related names are trademarks of Nintendo. NVIDIA, RTX and DLSS are trademarks of
-NVIDIA Corporation. AMD, Radeon and FidelityFX are trademarks of Advanced Micro Devices, Inc. They are used only to say
-what Deluxe8 works with. Deluxe8 is an independent project, not affiliated with, endorsed or sponsored by any of them;
-its name, logo and artwork are its own.
+Nintendo, Nintendo Switch, Mario Kart and Mario Kart 8 Deluxe are trademarks of Nintendo; the game, its characters,
+tracks, music and artwork are © Nintendo. NVIDIA, GeForce RTX and DLSS are trademarks of NVIDIA Corporation. AMD, Radeon
+and FidelityFX are trademarks of Advanced Micro Devices, Inc. Vulkan is a registered trademark of The Khronos Group Inc.
+Windows is a trademark of Microsoft Corporation; Linux is a registered trademark of Linus Torvalds; Steam is a trademark
+of Valve Corporation. They are used only to say what Deluxe8 works with. Deluxe8 is an independent project, not
+affiliated with, endorsed or sponsored by any of them nor by the Nextendo Network; its name, logo and artwork are its
+own.

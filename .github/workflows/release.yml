@@ -128,7 +128,7 @@ jobs:
       - name: Packages (Eden from docs/BUILDING.md, Tauri)
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends ca-certificates curl git file xz-utils \
+          apt-get install -y --no-install-recommends ca-certificates curl git file xz-utils patch unzip \
             autoconf cmake g++ gcc clang glslang-tools libglu1-mesa-dev libhidapi-dev libpulse-dev libtool libudev-dev \
             libxext-dev mesa-common-dev nasm ninja-build catch2 liblz4-dev libzstd-dev libssl-dev libavfilter-dev \
             libavcodec-dev libswscale-dev pkg-config zlib1g-dev libva-dev libvdpau-dev libvulkan-dev spirv-tools \
