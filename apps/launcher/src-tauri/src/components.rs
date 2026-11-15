@@ -102,9 +102,17 @@ fn raw_url(repo: &str, commit: &str, path: &str) -> String {
 }
 
 fn sha256_file(path: &Path) -> Option<String> {
+    use std::io::Read;
     let mut file = std::fs::File::open(path).ok()?;
     let mut hasher = Sha256::new();
-    std::io::copy(&mut file, &mut hasher).ok()?;
+    let mut buf = vec![0u8; 1 << 20];
+    loop {
+        let n = file.read(&mut buf).ok()?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
     Some(hex(&hasher.finalize()))
 }
 
