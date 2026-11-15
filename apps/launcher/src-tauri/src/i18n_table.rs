@@ -50,6 +50,7 @@ pub(crate) static IT: &[(&str, &str)] = &[
     ("No UPnP router found: open the port by hand or use a VPN", "Nessun router UPnP trovato: apri la porta a mano o usa una VPN"),
     ("No title id in {file}", "Nessun title id in {file}"),
     ("On Linux the DLSS plugin is set up with plugins/dlss/install-linux.sh from Racing 8 DX Recomp", "Su Linux il plugin DLSS si prepara con plugins/dlss/install-linux.sh di Racing 8 DX Recomp"),
+    ("On Linux the Native engine is not downloaded by the app yet: extract the AppImage of Racing 8 DX Recomp v{version} (Racing_8_DX_Recomp-x86_64.AppImage --appimage-extract) and copy the extracted folder to {dir}", "Su Linux il motore Nativo non si scarica ancora dall'app: estrai l'AppImage di Racing 8 DX Recomp v{version} (Racing_8_DX_Recomp-x86_64.AppImage --appimage-extract) e copia la cartella estratta in {dir}"),
     ("Online rooms are only available with the Emulator engine", "Le stanze online sono disponibili solo con il motore Emulatore"),
     ("Racing 8 DX Recomp v{version} downloaded from GitHub", "Racing 8 DX Recomp v{version} scaricato da GitHub"),
     ("Ready", "Pronto"),

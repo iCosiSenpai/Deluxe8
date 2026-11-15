@@ -232,10 +232,10 @@ pub fn ensure_native_engine(
     #[cfg(not(windows))]
     {
         let _ = (report, cancel);
-        Err(format!(
-            "Su Linux il motore Nativo non si scarica ancora dall'app: estrai l'AppImage di Racing 8 DX Recomp v{NATIVE_VERSION} \
-             (Racing_8_DX_Recomp-x86_64.AppImage --appimage-extract) e copia la cartella in {}",
-            paths.native_install_dir().display()
+        Err(crate::tr!(
+            "On Linux the Native engine is not downloaded by the app yet: extract the AppImage of Racing 8 DX Recomp v{version} (Racing_8_DX_Recomp-x86_64.AppImage --appimage-extract) and copy the extracted folder to {dir}",
+            version = NATIVE_VERSION,
+            dir = paths.native_install_dir().display()
         ))
     }
     #[cfg(windows)]
