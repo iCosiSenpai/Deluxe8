@@ -143,13 +143,20 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Launcher packages
         working-directory: apps/launcher
+        env:
+          NO_STRIP: 'true'   # linuxdeploy's own strip may not understand the newer ELF sections of the system libraries
         run: |
           npm install -g pnpm@10
           pnpm install --frozen-lockfile
-          pnpm tauri build --bundles appimage,deb --config src-tauri/tauri.bundle-linux.conf.json
+          pnpm tauri build --bundles deb --config src-tauri/tauri.bundle-linux.conf.json
+          # the AppImage (linuxdeploy) is best effort: when it fails, its output is in the log and the .deb still ships
+          pnpm tauri bundle --bundles appimage --verbose --config src-tauri/tauri.bundle-linux.conf.json ||
+            echo '::warning::AppImage bundling failed: shipping the .deb only (linuxdeploy output above)'
       - name: Collect
+        shell: bash
         run: |
           mkdir -p out/release
+          shopt -s nullglob
           cp apps/launcher/src-tauri/target/release/bundle/appimage/*.AppImage apps/launcher/src-tauri/target/release/bundle/deb/*.deb out/release/
           (cd out/release && sha256sum * > SHA256SUMS-linux.txt && cat SHA256SUMS-linux.txt)
       - uses: actions/upload-artifact@v7
