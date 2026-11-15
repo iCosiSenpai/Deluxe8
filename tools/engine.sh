@@ -77,9 +77,19 @@ patch_tree() {
     grep -qx '/src/deluxe8' "$SRC_DIR/.git/info/exclude" 2>/dev/null || echo '/src/deluxe8' >> "$SRC_DIR/.git/info/exclude"
 }
 
+# Eden needs GCC 16+ or Clang: prefer Clang when CC/CXX are not set (Ubuntu 26.04 ships GCC 15 by default).
+compilers() {
+    if [ -n "${CXX:-}" ]; then
+        echo "-DCMAKE_CXX_COMPILER=$CXX -DCMAKE_C_COMPILER=${CC:-cc}"
+    elif command -v clang++ >/dev/null && command -v clang >/dev/null; then
+        echo "-DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang"
+    fi
+}
+
 configure() {
     step "Configure ($CONFIG)"
-    cmake -S "$SRC_DIR" -B "$BUILD_DIR" -G Ninja \
+    # shellcheck disable=SC2046  # the compiler options are two words on purpose
+    cmake -S "$SRC_DIR" -B "$BUILD_DIR" -G Ninja $(compilers) \
         -DCMAKE_BUILD_TYPE="$CONFIG" \
         -DCPM_SOURCE_CACHE="$CACHE/cpm" \
         -DENABLE_QT=OFF -DYUZU_CMD=ON -DYUZU_ROOM=ON -DYUZU_ROOM_STANDALONE=ON \
