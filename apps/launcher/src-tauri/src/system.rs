@@ -120,10 +120,10 @@ pub fn gpus() -> Vec<GpuInfo> {
         let slot = std::fs::read_to_string(dev.join("uevent")).ok().and_then(|u| {
             u.lines().find_map(|l| l.strip_prefix("PCI_SLOT_NAME=").map(str::to_string))
         });
-        if let Some(slot) = &slot {
-            if !seen.insert(slot.clone()) {
-                continue;
-            }
+        if let Some(slot) = &slot
+            && !seen.insert(slot.clone())
+        {
+            continue;
         }
         let pretty = slot
             .as_deref()
