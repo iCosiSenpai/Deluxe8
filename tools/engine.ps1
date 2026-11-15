@@ -160,7 +160,9 @@ function Set-EnginePatches {
     Invoke-EngineGit -c advice.detachedHead=false checkout -q -f -B deluxe8 $Upstream.commit
     $patches = @(Get-ChildItem -Path $PatchDir -Filter '*.patch' -ErrorAction SilentlyContinue | Sort-Object Name)
     if ($patches.Count -gt 0) {
-        Invoke-EngineGit -c user.name=Deluxe8 -c user.email=build@deluxe8.invalid am --3way --keep-cr @($patches.FullName)
+        # one argument per patch file: an array passed as a single element would reach git as one joined path
+        $files = [string[]]$patches.FullName
+        Invoke-EngineGit -c user.name=Deluxe8 -c user.email=build@deluxe8.invalid am --3way --keep-cr @files
     }
     Write-Host "   $($patches.Count) patch(es) applied"
 
