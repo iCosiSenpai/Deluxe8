@@ -142,7 +142,8 @@ pub fn inspect_zip(path: &Path) -> Result<FirmwareReport> {
     let mut total_size = 0u64;
     for i in 0..archive.len() {
         let entry = archive.by_index(i).map_err(Error::Zip)?;
-        let name = entry.name().to_owned();
+        // zip 9 decodes entry names on request (an undecodable name is skipped, it cannot be an NCA)
+        let Ok(name) = entry.name().map(|n| n.into_owned()) else { continue };
         if is_nca_name(&name) {
             nca_count += 1;
             if is_cnmt_nca_name(&name) {
