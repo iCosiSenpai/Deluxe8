@@ -19,7 +19,16 @@ namespace Deluxe8 {
 ///   DELUXE8_TELEMETRY=1   machine-readable "D8> {json}" lines on stdout for the launcher
 ///   DELUXE8_OVERLAY_FONT  TTF used by the in-game overlay
 ///   DELUXE8_GAME_VERSION  display version shown in the overlay (e.g. "4.0.1")
+///   DELUXE8_LANGUAGE      "it" for an Italian overlay, English otherwise (the launcher's interface language)
 void Initialize();
+
+/// True when the overlay speaks Italian (DELUXE8_LANGUAGE=it).
+[[nodiscard]] bool Italian() noexcept;
+
+/// The overlay's text in its language: L("Resume", "Riprendi").
+[[nodiscard]] inline const char* L(const char* en, const char* it) noexcept {
+    return Italian() ? it : en;
+}
 
 [[nodiscard]] bool TelemetryEnabled() noexcept;
 

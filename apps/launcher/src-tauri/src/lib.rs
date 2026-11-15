@@ -5,9 +5,12 @@ pub mod components;
 mod eden;
 mod engine;
 mod game;
+pub mod i18n;
+mod i18n_table;
 pub mod logs;
 mod mods;
 pub mod native;
+pub mod nextendo;
 mod online;
 pub mod paths;
 pub mod prepare;
@@ -45,6 +48,7 @@ fn get_settings(state: State<'_, AppState>) -> Settings {
 #[tauri::command]
 fn save_settings(state: State<'_, AppState>, settings: Settings) -> CmdResult<()> {
     settings.save(&state.paths.settings_file).map_err(|e| e.to_string())?;
+    i18n::set_italian(i18n::wants_italian(&settings.ui.language, &i18n::system_locale()));
     *state.settings.lock().unwrap() = settings;
     Ok(())
 }
@@ -84,7 +88,7 @@ async fn inspect_firmware(path: String) -> CmdResult<game::FirmwareView> {
 #[tauri::command]
 fn prepare(app: AppHandle, state: State<'_, AppState>, engine: EngineKind) -> CmdResult<()> {
     if state.preparing.swap(true, Ordering::SeqCst) {
-        return Err("Preparazione già in corso".into());
+        return Err(crate::tr!("A preparation is already running").into());
     }
     let mut settings = state.settings.lock().unwrap().clone();
     settings.engine = engine;
@@ -121,7 +125,7 @@ async fn components_status(state: State<'_, AppState>) -> CmdResult<components::
 #[tauri::command]
 fn install_component(app: AppHandle, state: State<'_, AppState>, name: String) -> CmdResult<()> {
     if state.preparing.swap(true, Ordering::SeqCst) {
-        return Err("Un'altra preparazione è in corso".into());
+        return Err(crate::tr!("Another preparation is running").into());
     }
     let paths = state.paths.clone();
     let cancel = state.prepare_cancel.clone();
@@ -148,14 +152,14 @@ async fn launch(
     room: Option<engine::RoomTarget>,
 ) -> CmdResult<()> {
     if state.preparing.load(Ordering::SeqCst) {
-        return Err("Aspetta la fine della preparazione".into());
+        return Err(crate::tr!("Wait for the preparation to finish").into());
     }
     if state.launching.swap(true, Ordering::SeqCst) {
-        return Err("Il gioco si sta già avviando".into());
+        return Err(crate::tr!("The game is already starting").into());
     }
     let result = async {
         if state.engine.lock().unwrap().as_ref().is_some_and(|l| !l.kill.is_closed()) {
-            return Err("Il gioco è già in esecuzione".to_string());
+            return Err(crate::tr!("The game is already running").to_string());
         }
         let mut settings = state.settings.lock().unwrap().clone();
         settings.engine = engine;
@@ -231,6 +235,32 @@ fn mods_folder(state: State<'_, AppState>) -> String {
     dir.to_string_lossy().to_string()
 }
 
+/// Opens Ryujinx Nextendo without a game so the player can link a Nextendo account in its own window (Deluxe8 never
+/// handles the password). `online://closed` follows when the window is closed.
+#[tauri::command]
+fn open_online_client(app: AppHandle, state: State<'_, AppState>) -> CmdResult<()> {
+    let dir = state
+        .paths
+        .online_engine_dir()
+        .ok_or(tr!("Ryujinx Nextendo is not on this PC yet: set it up from the Online page"))?;
+    if let Some(manifest) = prepare::Manifest::load(&state.paths) {
+        // keys and firmware in place, so the account window can also reach the game list
+        nextendo::prepare(&state.paths, &manifest)?;
+    } else {
+        std::fs::create_dir_all(nextendo::root(&state.paths)).map_err(|e| e.to_string())?;
+    }
+    let settings = state.settings.lock().unwrap().clone();
+    let mut child = nextendo::command(&dir, &state.paths, &settings, None)
+        .spawn()
+        .map_err(|e| tr!("Ryujinx Nextendo did not start: {e}", e = e))?;
+    logs::write("Ryujinx Nextendo opened for the Nextendo Network login");
+    std::thread::spawn(move || {
+        let _ = child.wait();
+        let _ = app.emit("online://closed", ());
+    });
+    Ok(())
+}
+
 /// Opens one of Deluxe8's own folders in the file manager. The webview has no permission to open arbitrary paths: it can only
 /// name one of these.
 #[tauri::command]
@@ -276,6 +306,7 @@ pub fn run() {
                 paths.font
             ));
             let settings = Settings::load(&paths.settings_file);
+            i18n::set_italian(i18n::wants_italian(&settings.ui.language, &i18n::system_locale()));
             app.manage(AppState {
                 paths,
                 settings: Mutex::new(settings),
@@ -309,6 +340,7 @@ pub fn run() {
             set_mod_enabled,
             mods_folder,
             open_folder,
+            open_online_client,
             read_log,
         ])
         .build(tauri::generate_context!())

@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { tr } from '../i18n.svelte';
   /** Controller legend. Shows the device actually in use. */
   let { pad = null }: { pad?: string | null } = $props();
   const hints = [
-    { key: 'A', label: 'Seleziona' },
-    { key: 'B', label: 'Indietro' },
-    { key: 'LB RB', label: 'Sezioni' },
-    { key: 'Start', label: 'Gioca' },
+    { key: 'A', label: 'Select' },
+    { key: 'B', label: 'Back' },
+    { key: 'LB RB', label: 'Sections' },
+    { key: 'Start', label: 'Play' },
   ];
   const shortName = $derived(pad ? pad.replace(/\(.*?\)/g, '').trim().slice(0, 42) : null);
 </script>
@@ -15,12 +16,12 @@
     {#if shortName}
       <span class="dot ok" aria-hidden="true"></span>{shortName}
     {:else}
-      <span class="dot" aria-hidden="true"></span>Nessun controller: usa frecce, Invio ed Esc
+      <span class="dot" aria-hidden="true"></span>{tr('No controller: use the arrow keys, Enter and Esc')}
     {/if}
   </div>
-  <ul class="legend" aria-label="Comandi">
+  <ul class="legend" aria-label={tr('Button legend')}>
     {#each hints as h (h.key)}
-      <li><kbd>{h.key}</kbd><span>{h.label}</span></li>
+      <li><kbd>{h.key}</kbd><span>{tr(h.label)}</span></li>
     {/each}
   </ul>
 </footer>

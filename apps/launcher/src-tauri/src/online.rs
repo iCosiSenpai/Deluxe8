@@ -50,10 +50,10 @@ pub async fn list_rooms(lobby_url: &str) -> Result<Vec<RoomInfo>, String> {
         .get(&url)
         .send()
         .await
-        .map_err(|e| format!("Lobby non raggiungibile: {e}"))?
+        .map_err(|e| crate::tr!("The lobby cannot be reached: {e}", e = e))?
         .json()
         .await
-        .map_err(|e| format!("Risposta della lobby non valida: {e}"))?;
+        .map_err(|e| crate::tr!("Invalid answer from the lobby: {e}", e = e))?;
     let rooms = json.get("rooms").and_then(|r| r.as_array()).cloned().unwrap_or_default();
     let mut out = Vec::new();
     for r in rooms {
@@ -100,11 +100,11 @@ pub struct HostResult {
 }
 
 pub async fn host_room(paths: &AppPaths, s: &Settings, version: &str) -> Result<(HostedRoom, HostResult), String> {
-    let exe = paths.compat_room().ok_or("Server stanze (deluxe8-room) non trovato")?;
+    let exe = paths.compat_room().ok_or(crate::tr!("Room server (deluxe8-room) not found"))?;
     let port = s.online.host_port;
     let mut cmd = Command::new(&exe);
     cmd.args(["--room-name", &s.online.room_name])
-        .args(["--room-description", "Stanza Deluxe8"])
+        .args(["--room-description", crate::tr!("Deluxe8 room")])
         .args(["--port", &port.to_string()])
         .args(["--max-members", &s.online.max_players.clamp(2, 16).to_string()])
         .args(["--preferred-game", &format!("{GAME_NAME} {version}")])
@@ -119,11 +119,11 @@ pub async fn host_room(paths: &AppPaths, s: &Settings, version: &str) -> Result<
     }
     #[cfg(windows)]
     cmd.creation_flags(0x0800_0000);
-    let child = cmd.spawn().map_err(|e| format!("Server stanze non avviato: {e}"))?;
+    let child = cmd.spawn().map_err(|e| crate::tr!("The room server did not start: {e}", e = e))?;
 
     let local_ip = local_ip_address::local_ip().map_err(|e| e.to_string())?;
     let mut address = local_ip.to_string();
-    let mut upnp = "UPnP disattivato: gli amici fuori casa devono aprire la porta a mano".to_string();
+    let mut upnp = crate::tr!("UPnP is off: friends outside your home network need the port opened by hand").to_string();
     let mut gateway = None;
     if s.online.upnp {
         match igd_next::aio::tokio::search_gateway(Default::default()).await {
@@ -134,13 +134,13 @@ pub async fn host_room(paths: &AppPaths, s: &Settings, version: &str) -> Result<
                         if let Ok(IpAddr::V4(ext)) = gw.get_external_ip().await {
                             address = ext.to_string();
                         }
-                        upnp = format!("Porta {port} UDP aperta sul router (UPnP)");
+                        upnp = crate::tr!("UDP port {port} opened on the router (UPnP)", port = port);
                         gateway = Some(gw);
                     }
-                    Err(e) => upnp = format!("Il router ha rifiutato l'apertura della porta: {e}"),
+                    Err(e) => upnp = crate::tr!("The router refused to open the port: {e}", e = e),
                 }
             }
-            Err(_) => upnp = "Nessun router UPnP trovato: apri la porta a mano o usa una VPN".into(),
+            Err(_) => upnp = crate::tr!("No UPnP router found: open the port by hand or use a VPN").into(),
         }
     }
     Ok((

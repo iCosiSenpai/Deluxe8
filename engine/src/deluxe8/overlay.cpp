@@ -255,25 +255,25 @@ std::vector<Tab> BuildMenu() {
     std::vector<Tab> tabs;
 
     // ---- Image
-    Tab image{"Immagine", {}};
+    Tab image{L("Image", "Immagine"), {}};
     image.items.push_back(MakeEnumChoice<ScalingFilter>(
-        "Filtro di scala", "Come l'immagine interna viene portata alla risoluzione dello schermo.",
+        L("Scaling filter", "Filtro di scala"), L("How the internal image is brought to the screen's resolution.", "Come l'immagine interna viene portata alla risoluzione dello schermo."),
         v.scaling_filter, "scaling_filter",
         {{"FSR 1", int(ScalingFilter::Fsr)},
          {"SGSR", int(ScalingFilter::Sgsr)},
-         {"SGSR bordi", int(ScalingFilter::SgsrEdge)},
+         {L("SGSR edges", "SGSR bordi"), int(ScalingFilter::SgsrEdge)},
          {"ScaleForce", int(ScalingFilter::ScaleForce)},
          {"Lanczos", int(ScalingFilter::Lanczos)},
-         {"Bicubico", int(ScalingFilter::Bicubic)},
-         {"Bilineare", int(ScalingFilter::Bilinear)},
+         {L("Bicubic", "Bicubico"), int(ScalingFilter::Bicubic)},
+         {L("Bilinear", "Bilineare"), int(ScalingFilter::Bilinear)},
          {"Area", int(ScalingFilter::Area)},
          {"MMPX", int(ScalingFilter::Mmpx)},
-         {"Pixel nitidi", int(ScalingFilter::NearestNeighbor)}}));
+         {L("Sharp pixels", "Pixel nitidi"), int(ScalingFilter::NearestNeighbor)}}));
     {
         Item sharp;
         sharp.kind = Item::Kind::Slider;
-        sharp.label = "Nitidezza FSR";
-        sharp.hint = "Solo con FSR 1. Valori alti = immagine più nitida.";
+        sharp.label = L("FSR sharpness", "Nitidezza FSR");
+        sharp.hint = L("FSR 1 only. Higher values = a sharper image.", "Solo con FSR 1. Valori alti = immagine più nitida.");
         sharp.min = 0;
         sharp.max = 100;
         sharp.step = 5;
@@ -287,45 +287,45 @@ std::vector<Tab> BuildMenu() {
         image.items.push_back(std::move(sharp));
     }
     image.items.push_back(MakeEnumChoice<AntiAliasing>(
-        "Anti-aliasing", "Ammorbidisce i bordi seghettati dopo il rendering.", v.anti_aliasing,
+        "Anti-aliasing", L("Smooths jagged edges after rendering.", "Ammorbidisce i bordi seghettati dopo il rendering."), v.anti_aliasing,
         "anti_aliasing",
-        {{"Nessuno", int(AntiAliasing::None)}, {"FXAA", int(AntiAliasing::Fxaa)},
+        {{L("None", "Nessuno"), int(AntiAliasing::None)}, {"FXAA", int(AntiAliasing::Fxaa)},
          {"SMAA", int(AntiAliasing::Smaa)}}));
     image.items.push_back(MakeEnumChoice<ResolutionSetup>(
-        "Risoluzione interna", "Moltiplica la risoluzione nativa del gioco (1080p a 1x).",
+        L("Internal resolution", "Risoluzione interna"), L("Multiplies the game's native resolution (1080p at 1x).", "Moltiplica la risoluzione nativa del gioco (1080p a 1x)."),
         v.resolution_setup, "resolution_setup",
-        {{"0,5x", int(ResolutionSetup::Res1_2X)},
-         {"0,75x", int(ResolutionSetup::Res3_4X)},
+        {{L("0.5x", "0,5x"), int(ResolutionSetup::Res1_2X)},
+         {L("0.75x", "0,75x"), int(ResolutionSetup::Res3_4X)},
          {"1x (1080p)", int(ResolutionSetup::Res1X)},
-         {"1,5x", int(ResolutionSetup::Res3_2X)},
+         {L("1.5x", "1,5x"), int(ResolutionSetup::Res3_2X)},
          {"2x (4K)", int(ResolutionSetup::Res2X)},
          {"3x", int(ResolutionSetup::Res3X)},
          {"4x (8K)", int(ResolutionSetup::Res4X)}},
         true));
     image.items.push_back(MakeEnumChoice<AspectRatio>(
-        "Formato", "Il gioco è pensato per 16:9; gli altri formati allungano l'immagine.",
+        L("Aspect ratio", "Formato"), L("The game is made for 16:9; other ratios stretch the image.", "Il gioco è pensato per 16:9; gli altri formati allungano l'immagine."),
         v.aspect_ratio, "aspect_ratio",
         {{"16:9", int(AspectRatio::R16_9)}, {"16:10", int(AspectRatio::R16_10)},
          {"21:9", int(AspectRatio::R21_9)}, {"4:3", int(AspectRatio::R4_3)},
-         {"Adatta alla finestra", int(AspectRatio::Stretch)}}));
+         {L("Fit the window", "Adatta alla finestra"), int(AspectRatio::Stretch)}}));
     image.items.push_back(MakeEnumChoice<AnisotropyMode>(
-        "Filtro anisotropico", "Texture più definite in lontananza, costo quasi nullo.",
+        L("Anisotropic filtering", "Filtro anisotropico"), L("Sharper textures in the distance, almost free.", "Texture più definite in lontananza, costo quasi nullo."),
         v.max_anisotropy, "max_anisotropy",
-        {{"Automatico", int(AnisotropyMode::Automatic)}, {"2x", int(AnisotropyMode::X2)},
+        {{L("Automatic", "Automatico"), int(AnisotropyMode::Automatic)}, {"2x", int(AnisotropyMode::X2)},
          {"4x", int(AnisotropyMode::X4)}, {"8x", int(AnisotropyMode::X8)},
          {"16x", int(AnisotropyMode::X16)}},
         true));
     tabs.push_back(std::move(image));
 
     // ---- Smoothness
-    Tab smooth{"Fluidità", {}};
+    Tab smooth{L("Smoothness", "Fluidità"), {}};
 #ifdef HAS_LSFG
     {
         Item fg;
         fg.kind = Item::Kind::Choice;
         fg.label = "Frame generation";
-        fg.hint = "Lossless Scaling (LSFG): fotogrammi interpolati tra quelli del gioco.";
-        fg.choices = {{"Spenta", 0}, {"2x", 2}, {"3x", 3}, {"4x", 4}};
+        fg.hint = L("Lossless Scaling (LSFG): frames interpolated between the game's.", "Lossless Scaling (LSFG): fotogrammi interpolati tra quelli del gioco.");
+        fg.choices = {{L("Off", "Spenta"), 0}, {"2x", 2}, {"3x", 3}, {"4x", 4}};
         fg.get = [&v = Settings::values] {
             return v.frame_gen.GetValue() ? static_cast<int>(v.frame_gen_multiplier.GetValue()) : 0;
         };
@@ -341,8 +341,8 @@ std::vector<Tab> BuildMenu() {
     {
         Item flow;
         flow.kind = Item::Kind::Slider;
-        flow.label = "Scala del flusso";
-        flow.hint = "Precisione del calcolo del movimento. 0 = automatica.";
+        flow.label = L("Flow scale", "Scala del flusso");
+        flow.hint = L("Precision of the motion estimate. 0 = automatic.", "Precisione del calcolo del movimento. 0 = automatica.");
         flow.min = 0;
         flow.max = 100;
         flow.step = 5;
@@ -358,22 +358,22 @@ std::vector<Tab> BuildMenu() {
             }
             EmitSetting("frame_gen_flow_scale", s);
         };
-        flow.format = [](int s) { return s == 0 ? std::string{"Automatica"} : std::format("{}%", s); };
+        flow.format = [](int s) { return s == 0 ? std::string{L("Automatic", "Automatica")} : std::format("{}%", s); };
         smooth.items.push_back(std::move(flow));
     }
 #else
     {
         Item na;
         na.label = "Frame generation";
-        na.info = [] { return std::string{"Non inclusa in questa build"}; };
+        na.info = [] { return std::string{L("Not included in this build", "Non inclusa in questa build")}; };
         smooth.items.push_back(std::move(na));
     }
 #endif
     {
         Item limit;
         limit.kind = Item::Kind::Toggle;
-        limit.label = "Velocità come su console";
-        limit.hint = "Spegnilo solo per test: il gioco andrebbe più veloce del normale.";
+        limit.label = L("Console speed", "Velocità come su console");
+        limit.hint = L("Turn it off for testing only: the game would run faster than normal.", "Spegnilo solo per test: il gioco andrebbe più veloce del normale.");
         limit.get = [&v = Settings::values] { return v.use_speed_limit.GetValue() ? 1 : 0; };
         limit.set = [&v = Settings::values](int on) {
             v.use_speed_limit.SetValue(on != 0);
@@ -384,11 +384,11 @@ std::vector<Tab> BuildMenu() {
     {
         Item hud;
         hud.kind = Item::Kind::Choice;
-        hud.label = "Indicatore prestazioni";
-        hud.hint = "FPS e tempi del fotogramma nell'angolo dello schermo.";
-        hud.choices = {{"Spento", int(HudMode::Off)},
-                       {"Essenziale", int(HudMode::Compact)},
-                       {"Completo", int(HudMode::Full)}};
+        hud.label = L("Performance overlay", "Indicatore prestazioni");
+        hud.hint = L("FPS and frame times in the corner of the screen.", "FPS e tempi del fotogramma nell'angolo dello schermo.");
+        hud.choices = {{L("Off", "Spento"), int(HudMode::Off)},
+                       {L("Essential", "Essenziale"), int(HudMode::Compact)},
+                       {L("Full", "Completo"), int(HudMode::Full)}};
         hud.get = [] { return g_hud_mode.load(); };
         hud.set = [](int m) {
             g_hud_mode.store(m);
@@ -418,7 +418,7 @@ std::vector<Tab> BuildMenu() {
     {
         Item mute;
         mute.kind = Item::Kind::Toggle;
-        mute.label = "Muto";
+        mute.label = L("Mute", "Muto");
         mute.get = [&v = Settings::values] { return v.audio_muted.GetValue() ? 1 : 0; };
         mute.set = [&v = Settings::values](int on) {
             v.audio_muted.SetValue(on != 0);
@@ -432,19 +432,19 @@ std::vector<Tab> BuildMenu() {
     Tab online{"Online", {}};
     {
         Item room;
-        room.label = "Stanza";
+        room.label = L("Room", "Stanza");
         room.info = [] {
             if (auto member = Network::GetRoomMember().lock(); member && member->IsConnected()) {
                 const auto info = member->GetRoomInformation();
                 return std::format("{} ({}/{})", info.name, member->GetMemberInformation().size(),
                                    info.member_slots);
             }
-            return std::string{"Non connesso"};
+            return std::string{L("Not connected", "Non connesso")};
         };
         online.items.push_back(std::move(room));
 
         Item players;
-        players.label = "Giocatori";
+        players.label = L("Players", "Giocatori");
         players.info = [] {
             std::string list;
             if (auto member = Network::GetRoomMember().lock(); member && member->IsConnected()) {
@@ -461,7 +461,7 @@ std::vector<Tab> BuildMenu() {
 
         Item leave;
         leave.kind = Item::Kind::Action;
-        leave.label = "Lascia la stanza";
+        leave.label = L("Leave the room", "Lascia la stanza");
         leave.action = [] {
             if (auto member = Network::GetRoomMember().lock(); member && member->IsConnected()) {
                 member->Leave();
@@ -473,18 +473,18 @@ std::vector<Tab> BuildMenu() {
     tabs.push_back(std::move(online));
 
     // ---- Game
-    Tab game{"Partita", {}};
+    Tab game{L("Match", "Partita"), {}};
     {
         Item resume;
         resume.kind = Item::Kind::Action;
-        resume.label = "Riprendi";
+        resume.label = L("Resume", "Riprendi");
         resume.action = [] { Push(Nav::Toggle); };
         game.items.push_back(std::move(resume));
 
         Item quit;
         quit.kind = Item::Kind::Action;
-        quit.label = "Esci dal gioco";
-        quit.hint = "Chiude il gioco e torna al launcher. Salva prima, se sei in un Gran Premio.";
+        quit.label = L("Quit the game", "Esci dal gioco");
+        quit.hint = L("Closes the game and goes back to the launcher. Save first if you are in a Grand Prix.", "Chiude il gioco e torna al launcher. Salva prima, se sei in un Gran Premio.");
         quit.action = [] {
             if (const auto& exit = GetActions().request_exit) {
                 exit();
@@ -923,7 +923,7 @@ void ApplyNav(Nav nav) {
             const int next = StepChoice(item, 1);
             item.set(next == item.get() ? item.choices.front().value : next);
         } else if (item.kind == Item::Kind::Action && item.action) {
-            const bool destructive = item.label == "Esci dal gioco";
+            const bool destructive = item.label == L("Quit the game", "Esci dal gioco");
             if (destructive && m.confirm_row != m.row) {
                 m.confirm_row = m.row;
             } else {
@@ -1016,7 +1016,7 @@ void DrawHud(ImDrawList* dl, float scale) {
 
     const std::string fps = std::format("{:.0f}", perf.guest_fps > 0 ? perf.guest_fps : static_cast<double>(s.present_fps));
     const bool generating = s.present_fps > perf.guest_fps * 1.5 && perf.guest_fps > 1.0;
-    const std::string sub = generating ? std::format("FPS gioco  {:.0f} a schermo", s.present_fps)
+    const std::string sub = generating ? std::vformat(L("Game FPS  {:.0f} on screen", "FPS gioco  {:.0f} a schermo"), std::make_format_args(s.present_fps))
                                        : std::string{"FPS"};
     const float width = std::max(TextWidth(big_px, fps) + TextWidth(small_px, sub) + pad * 3.0f,
                                  mode == HudMode::Full ? 260.0f * scale : 0.0f);
@@ -1033,7 +1033,7 @@ void DrawHud(ImDrawList* dl, float scale) {
         return;
     }
     const std::string line =
-        std::format("{:.1f} ms   velocità {:.0f}%", perf.frametime_ms, perf.speed_percent);
+        std::vformat(L("{:.1f} ms   speed {:.0f}%", "{:.1f} ms   velocità {:.0f}%"), std::make_format_args(perf.frametime_ms, perf.speed_percent));
     Text(dl, {origin.x + pad, origin.y + pad + big_px + 4.0f * scale}, small_px, kGesso2, line);
 
     // Frame-time graph of presented frames (16.7 ms line = 60 fps).
@@ -1066,7 +1066,7 @@ void DrawToast(ImDrawList* dl, float scale, const ImVec2& display) {
     }
     const float alpha = age < 6.0f ? 1.0f : 7.0f - age;
     const float size = 18.0f * scale;
-    const std::string text = "L3 + R3 (o F1) apre il menu Deluxe8";
+    const std::string text = L("L3 + R3 (or F1) opens the Deluxe8 menu", "L3 + R3 (o F1) apre il menu Deluxe8");
     const float w = TextWidth(size, text) + 28.0f * scale;
     const ImVec2 p0{(display.x - w) * 0.5f, display.y - 72.0f * scale};
     const ImVec2 p1{p0.x + w, p0.y + size + 20.0f * scale};
@@ -1090,7 +1090,7 @@ std::string ValueText(const Item& item) {
     case Item::Kind::Slider:
         return item.format ? item.format(item.get()) : std::to_string(item.get());
     case Item::Kind::Toggle:
-        return item.get() ? "Sì" : "No";
+        return item.get() ? L("Yes", "Sì") : L("No", "No");
     case Item::Kind::Info:
         return item.info ? item.info() : std::string{};
     case Item::Kind::Action:
@@ -1154,7 +1154,7 @@ void DrawMenu(ImDrawList* dl, float scale, const ImVec2& display) {
         const ImU32 label_color = item.kind == Item::Kind::Info ? kGesso2 : kGesso;
         std::string label = item.label;
         if (item.kind == Item::Kind::Action && m.confirm_row == static_cast<int>(i)) {
-            label = "Premi di nuovo per confermare";
+            label = L("Press again to confirm", "Premi di nuovo per confermare");
         }
         Text(dl, {r0.x + pad * 0.5f + 6.0f * scale, text_y}, label_size,
              m.confirm_row == static_cast<int>(i) ? kGiallo : label_color, label);
@@ -1188,7 +1188,7 @@ void DrawMenu(ImDrawList* dl, float scale, const ImVec2& display) {
     std::string hint = current.hint;
     if (current.next_launch) {
         hint += hint.empty() ? "" : " ";
-        hint += "Si applica al prossimo avvio.";
+        hint += L("Applies at the next start.", "Si applica al prossimo avvio.");
     }
     const float hint_size = 16.0f * scale;
     if (!hint.empty()) {
@@ -1204,7 +1204,7 @@ void DrawMenu(ImDrawList* dl, float scale, const ImVec2& display) {
     dl->AddLine({p0.x + pad, fy - 14.0f * scale}, {p1.x - pad, fy - 14.0f * scale}, kLinea, 1.0f);
     float fx = p0.x + pad;
     for (const auto& [key, what] : std::array<std::pair<const char*, const char*>, 4>{{
-             {"Croce", "scegli"}, {"A", "conferma"}, {"B", "chiudi"}, {"LB RB", "schede"}}}) {
+             {L("D-pad", "Croce"), L("choose", "scegli")}, {"A", L("confirm", "conferma")}, {"B", L("close", "chiudi")}, {"LB RB", L("tabs", "schede")}}}) {
         const float kw = TextWidth(hint_size, key) + 12.0f * scale;
         dl->AddRectFilled({fx, fy - 3.0f * scale}, {fx + kw, fy + hint_size + 3.0f * scale}, kPannello2,
                           4.0f * scale);

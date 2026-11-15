@@ -25,6 +25,7 @@ Actions g_actions{};
 std::string g_game_version;
 std::string g_overlay_font;
 int g_players = 1;
+bool g_italian = false;
 
 std::optional<std::string> GetEnv(const char* name) {
 #ifdef _WIN32
@@ -96,6 +97,7 @@ void Initialize() {
     g_telemetry = GetEnv("DELUXE8_TELEMETRY").value_or("") == "1";
     g_game_version = GetEnv("DELUXE8_GAME_VERSION").value_or("");
     g_overlay_font = GetEnv("DELUXE8_OVERLAY_FONT").value_or("");
+    g_italian = GetEnv("DELUXE8_LANGUAGE").value_or("") == "it";
     if (const auto players = GetEnv("DELUXE8_PLAYERS")) {
         g_players = std::clamp(std::atoi(players->c_str()), 1, 8);
     }
@@ -109,6 +111,10 @@ void Initialize() {
 
     Emit(std::format(R"({{"t":"hello","engine":"deluxe8-compat","telemetry":{}}})",
                      g_telemetry ? "true" : "false"));
+}
+
+bool Italian() noexcept {
+    return g_italian;
 }
 
 bool TelemetryEnabled() noexcept {

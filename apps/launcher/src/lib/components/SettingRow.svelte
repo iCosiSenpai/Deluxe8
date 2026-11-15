@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from '../i18n.svelte';
   import type { Snippet } from 'svelte';
 
   /** One line of the setup sheet: what it is, what it costs, and the control. */
@@ -23,7 +24,7 @@
 </script>
 
 {#snippet meter(level: 1 | 2 | 3)}
-  <div class="cost" title="Costo per la scheda video" aria-label="Costo: {level} su 3">
+  <div class="cost" title={tr('Cost for the graphics card')} aria-label={tr('Cost: {level} of 3', { level })}>
     {#each [1, 2, 3] as i (i)}
       <span class:on={i <= level} class="seg s{level}"></span>
     {/each}

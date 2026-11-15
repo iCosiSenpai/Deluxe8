@@ -79,6 +79,41 @@ fn main() {
                 let tail: Vec<String> = fps.iter().rev().take(10).rev().map(|f| format!("{f:.1}")).collect();
                 println!("  {} fps samples, last: {}", fps.len(), tail.join(" "));
             }
+            "online" => {
+                println!("== online engine (Ryujinx Nextendo)");
+                let dir = components::ensure_online_engine(&paths, &mut report, &cancel).expect("online engine");
+                println!("  -> {}", dir.display());
+            }
+            "online-launch" => {
+                // needs a prepared data folder (manifest + keys and firmware in compat/); closes the window after <seconds>
+                let seconds: u64 = args[i + 1].parse().expect("seconds");
+                i += 1;
+                let manifest = Manifest::load(&paths).expect("prepared manifest");
+                deluxe8_launcher_lib::nextendo::prepare(&paths, &manifest).expect("online prepare");
+                println!("== online launch for {seconds}s");
+                let dir = paths.online_engine_dir().expect("online engine");
+                let mut s = Settings::default();
+                s.display.fullscreen = false;
+                let mut child = deluxe8_launcher_lib::nextendo::command(&dir, &paths, &s, Some(&manifest.base))
+                    .spawn()
+                    .expect("spawn");
+                std::thread::sleep(std::time::Duration::from_secs(seconds));
+                let _ = child.kill();
+                let _ = child.wait();
+                let logs = deluxe8_launcher_lib::nextendo::root(&paths).join("Logs");
+                let mut newest: Vec<_> = std::fs::read_dir(&logs).map(|r| r.flatten().map(|e| e.path()).collect()).unwrap_or_default();
+                newest.sort();
+                if let Some(log) = newest.last() {
+                    let text = std::fs::read_to_string(log).unwrap_or_default();
+                    for line in text.lines().filter(|l| {
+                        ["update NCA", "AddOnContent", "Loading", "TitleId", "Application Loaded", "Error", "firmware", "Firmware"]
+                            .iter()
+                            .any(|k| l.contains(k))
+                    }) {
+                        println!("  {}", line.chars().take(200).collect::<String>());
+                    }
+                }
+            }
             other => panic!("unknown step {other}"),
         }
         println!("  ({:.1}s)", started.elapsed().as_secs_f64());

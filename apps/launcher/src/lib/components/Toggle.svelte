@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from '../i18n.svelte';
   let {
     checked = $bindable(),
     label,
@@ -17,7 +18,7 @@
   }}
 >
   <span class="track"><span class="knob"></span></span>
-  <span class="state">{checked ? 'Attivo' : 'Spento'}</span>
+  <span class="state">{checked ? tr('On') : tr('Off')}</span>
 </button>
 
 <style>

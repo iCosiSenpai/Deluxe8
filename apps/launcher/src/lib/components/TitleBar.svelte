@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from '../i18n.svelte';
   import { isTauri } from '../api';
 
   let { subtitle = '' }: { subtitle?: string } = $props();
@@ -20,13 +21,13 @@
   </div>
   {#if isTauri}
     <div class="controls" data-nav-skip>
-      <button tabindex="-1" aria-label="Riduci a icona" onclick={minimize}>
+      <button tabindex="-1" aria-label={tr('Minimize')} onclick={minimize}>
         <svg viewBox="0 0 12 12"><path d="M2 6.5h8" /></svg>
       </button>
-      <button tabindex="-1" aria-label="Ingrandisci" onclick={toggleMax}>
+      <button tabindex="-1" aria-label={tr('Maximize')} onclick={toggleMax}>
         <svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" /></svg>
       </button>
-      <button tabindex="-1" class="close" aria-label="Chiudi" onclick={close}>
+      <button tabindex="-1" class="close" aria-label={tr('Close')} onclick={close}>
         <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" /></svg>
       </button>
     </div>

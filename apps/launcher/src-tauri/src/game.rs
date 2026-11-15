@@ -79,13 +79,13 @@ fn view(info: &package::PackageInfo, path: &Path) -> PackageView {
         note = Some(bits.to_string());
     }
     if info.kind == PackageKind::Update && info.version != SUPPORTED_UPDATE && note.is_none() {
-        note = Some(format!(
-            "Versione {}: Deluxe8 è tarato sulla 4.0.1 (il motore Nativo accetta solo 3.0.4 e 4.0.1)",
-            info.display_version.clone().unwrap_or_else(|| format!("v{}", info.version))
+        note = Some(crate::tr!(
+            "Version {version}: Deluxe8 is tuned for 4.0.1 (the Native engine accepts only 3.0.4 and 4.0.1)",
+            version = info.display_version.clone().unwrap_or_else(|| format!("v{}", info.version))
         ));
     }
     if solid && note.is_none() {
-        note = Some("Compressione solid: verrà convertito in NSP una volta sola".into());
+        note = Some(crate::tr!("Solid compression: converted to NSP once").into());
     }
     PackageView {
         path: path.to_string_lossy().to_string(),
@@ -130,7 +130,7 @@ fn package_files(folder: &Path) -> Vec<PathBuf> {
 
 pub fn scan_folder(folder: &Path) -> Result<GameScan, String> {
     if !folder.is_dir() {
-        return Err("La cartella non esiste".into());
+        return Err(crate::tr!("The folder does not exist").into());
     }
     let mut scan = GameScan {
         folder: folder.to_string_lossy().to_string(),
@@ -162,10 +162,10 @@ pub fn scan_folder(folder: &Path) -> Result<GameScan, String> {
         }
     }
     if scan.base.is_none() {
-        scan.problems.push("Manca il gioco base (0100152000022000).".into());
+        scan.problems.push(crate::tr!("The base game (0100152000022000) is missing.").into());
     }
     if scan.update.is_none() {
-        scan.problems.push("Manca l'aggiornamento (0100152000022800): serve la 4.0.1.".into());
+        scan.problems.push(crate::tr!("The update (0100152000022800) is missing: 4.0.1 is needed.").into());
     }
     Ok(scan)
 }

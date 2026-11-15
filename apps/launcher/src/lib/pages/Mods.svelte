@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from '../i18n.svelte';
   import { onMount } from 'svelte';
   import { api } from '../api';
   import { app } from '../state.svelte';
@@ -12,7 +13,7 @@
     try {
       [mods, folder] = await Promise.all([api.listMods(), api.modsFolder()]);
     } catch (e) {
-      app.toast(`Mod non leggibili: ${e}`, 'error');
+      app.toast(tr('Mods could not be read: {error}', { error: String(e) }), 'error');
     }
   }
   onMount(load);
@@ -22,26 +23,25 @@
       await api.setModEnabled(m.name, enabled);
     } catch (e) {
       m.enabled = !enabled;
-      app.toast(`Non riesco a cambiare la mod: ${e}`, 'error');
+      app.toast(tr('Could not change the mod: {error}', { error: String(e) }), 'error');
     }
   }
   const mb = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(n / 1e6))} MB`);
 </script>
 
 <section class="page">
-  <h1 class="display">Mod</h1>
+  <h1 class="display">{tr('Mods')}</h1>
   <p class="lead">
-    Ogni mod è una cartella con dentro <code>romfs</code>, <code>exefs</code> o <code>cheats</code>. Mettila nella
-    cartella delle mod e attivala qui. Le mod fatte per la 3.0.x possono bloccare la 4.0.1 al primo caricamento.
+    {tr('Each mod is a folder with romfs, exefs or cheats inside. Put it in the mods folder and turn it on here. Mods load in the Emulator engine; mods made for 3.0.x can freeze 4.0.1 on the first load.')}
   </p>
   <div class="bar">
     <span class="path data">{folder}</span>
-    <button class="ghost" onclick={() => api.openFolder('mods').catch((e) => app.toast(`Cartella non aperta: ${e}`, 'error'))}>Apri la cartella</button>
-    <button class="ghost" onclick={load}>Aggiorna</button>
+    <button class="ghost" onclick={() => api.openFolder('mods').catch((e) => app.toast(tr('Folder not opened: {error}', { error: String(e) }), 'error'))}>{tr('Open the folder')}</button>
+    <button class="ghost" onclick={load}>{tr('Refresh')}</button>
   </div>
   <div class="sheet">
     {#if !mods.length}
-      <p class="empty">Nessuna mod installata.</p>
+      <p class="empty">{tr('No mods installed.')}</p>
     {/if}
     {#each mods as m (m.name)}
       <div class="mod">
@@ -68,13 +68,6 @@
     color: var(--gesso-2);
     max-width: 74ch;
     margin-bottom: var(--s5);
-  }
-  code {
-    font-family: inherit;
-    font-stretch: 85%;
-    background: var(--pannello-2);
-    padding: 0 5px;
-    border-radius: 3px;
   }
   .bar {
     display: flex;

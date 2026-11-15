@@ -1,6 +1,6 @@
 # Architecture
 
-Deluxe8 is a launcher with two engines for the player's own copy of Mario Kart 8 Deluxe (base game, update 4.0.1, Booster
+Deluxe8 is a launcher with three engines for the player's own copy of Mario Kart 8 Deluxe (base game, update 4.0.1, Booster
 Course Pass). Nothing from Nintendo is shipped or downloaded: the player points the launcher at their own game files, keys
 and firmware.
 
@@ -9,13 +9,18 @@ apps/launcher (Tauri 2: Rust backend + Svelte 5 UI)
   ├─ setup wizard ─ crates/nx: NSZ -> NSP (SHA-256 per NCA), keys / firmware checks
   ├─ preparation ─ content, keys, firmware, engine configuration
   │                 Native: download engine (GitHub) -> kartrecomp-setup (ARM64 -> C -> x86-64) -> DLSS (NVIDIA GitHub)
-  ├─ Compat engine  deluxe8-engine = Eden (GPL-3.0) @ engine/upstream.json + engine/patches + engine/src/deluxe8
-  └─ Native engine  mk8d-engine = Racing 8 DX Recomp (GPL-3.0) release, plugins (FSR 3.1, FSR 4, DLSS built on the PC)
+  ├─ Emulator engine deluxe8-engine = Eden (GPL-3.0) @ engine/upstream.json + engine/patches + engine/src/deluxe8
+  ├─ Native engine  mk8d-engine = Racing 8 DX Recomp (GPL-3.0) release, plugins (FSR 3.1, FSR 4, DLSS built on the PC)
+  └─ Online engine  Ryujinx Nextendo (MIT) release (downloaded): the Nextendo Network
 ```
+
+The Emulator engine is called "Compat" in the code (`EngineKind::Compat`, `compat` in settings and paths); players see
+"Emulator". The interface is English with an Italian dictionary (`src/lib/i18n/it/*`, `tr('English text')`); the
+backend's own messages use `tr!` and `src-tauri/src/i18n_table.rs`; the overlay gets `DELUXE8_LANGUAGE`.
 
 ## Engines
 
-| | Compat | Native |
+| | Emulator (`compat`) | Native |
 |---|---|---|
 | What | Eden, the Switch emulator, tailored by our patch queue | static recompilation of the game's ARM64 code to x86-64 |
 | Comes from | built by `tools/engine.ps1` (bundled with the launcher) | Racing 8 DX Recomp v0.2.4 release (downloaded) or `tools/native.ps1` |
@@ -37,6 +42,8 @@ uninstalling leaves the data folder alone), `$XDG_DATA_HOME/deluxe8` on Linux, o
 | `compat/` | Compat engine user folder (`DELUXE8_USER_DIR`): keys, firmware, NAND, saves, mods, config |
 | `native/{data,cache,config}/kartrecomp` | Native engine data (XDG roots): hard links to the NSPs, keys, firmware, recompiled modules, saves, plugins built on the PC, `kartrecomp_overlay.ini` |
 | `engines/native/v<version>` | Native engine downloaded by the launcher |
+| `engines/online/v<version>` | Ryujinx Nextendo downloaded by the launcher |
+| `online/` | Ryujinx Nextendo's data (`-r`): keys, firmware links, `games/<id>/updates.json` + `dlc.json`, saves, the Nextendo account file (never read by Deluxe8) |
 | `downloads/` | archives and SDK files kept for rebuilds |
 | `logs/` | `launcher.log`, `engine.log` |
 
@@ -64,6 +71,7 @@ check.
 | Component | Source | Size | Where it goes |
 |---|---|---|---|
 | Native engine | `github.com/galarianpikachu2021-hue/Racing-8-DX-Recomp/releases/download/v0.2.4/KartRecomp-windows-x64.zip` | 213 MB | `engines/native/v0.2.4` |
+| Ryujinx Nextendo 1.10.6 (Online engine) | `git.nextendo.network/NextendoNetwork/Ryujinx-Nextendo/releases/download/v1.10.6/` (Windows zip, Linux tar.gz) | 42 / 40 MB | `engines/online/v1.10.6` |
 | DLSS SDK 310.9.16 (12 headers, `nvsdk_ngx_d.lib`, `nvngx_dlss.dll`, `nvngx_dlssg.dll`, licence) | `raw.githubusercontent.com/NVIDIA/DLSS/9981c635.../` | 71 MB | `downloads/dlss-sdk-310.9.16` |
 | Vulkan headers 1.4.363 | `raw.githubusercontent.com/KhronosGroup/Vulkan-Headers/6802bb47.../` | 1.5 MB | `downloads/vulkan-headers-1.4.363` |
 

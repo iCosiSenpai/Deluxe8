@@ -37,7 +37,7 @@ egit() { git -C "$SRC_DIR" "$@"; }
 
 toolchain() {
     step "Toolchain"
-    for tool in git cmake ninja pkg-config glslangValidator; do
+    for tool in git cmake ninja pkg-config glslangValidator patch; do
         command -v "$tool" >/dev/null || die "$tool is missing (see docs/BUILDING.md for the packages)"
     done
     local cc="${CXX:-$(command -v clang++ || command -v g++ || true)}"

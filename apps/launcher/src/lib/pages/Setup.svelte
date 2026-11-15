@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { api, on, openUrl, pickPath } from '../api';
+  import { api, demo, on, openUrl, pickPath } from '../api';
+  import { locale, resolveLocale, tr, type LocaleSetting } from '../i18n.svelte';
   import { app } from '../state.svelte';
   import { presets } from '../defaults';
   import Kerb from '../components/Kerb.svelte';
+  import Segmented from '../components/Segmented.svelte';
   import Toggle from '../components/Toggle.svelte';
   import type {
     Candidates,
@@ -15,8 +17,9 @@
     PrepareStep,
   } from '../types';
 
-  const steps = ['Benvenuto', 'Il tuo gioco', 'Chiavi e firmware', 'Motore', 'Preparazione'] as const;
-  let step = $state(0);
+  // English source text, shown through tr
+  const steps = ['Welcome', 'Your game', 'Keys and firmware', 'Engine', 'Preparation'] as const;
+  let step = $state(Math.min(3, Number(demo?.get('step') ?? 0) || 0));
 
   let candidates = $state<Candidates | null>(null);
   let scan = $state<GameScan | null>(null);
@@ -28,6 +31,7 @@
   let comp = $state<ComponentsStatus | null>(null);
 
   const s = app.settings;
+  const autoName = $derived(resolveLocale('auto', app.system?.locale) === 'it' ? 'Italiano' : 'English');
 
   onMount(() => {
     api.componentsStatus().then((c) => (comp = c)).catch(() => {});
@@ -39,7 +43,7 @@
       else if (s.paths.prodKeys) await useKeys(s.paths.prodKeys);
       if (!s.paths.firmware && c.firmware[0]) await useFirmware(c.firmware[0]);
       else if (s.paths.firmware) await useFirmware(s.paths.firmware);
-    }).catch((e) => app.toast(`Ricerca automatica non riuscita: ${e}`, 'warn'));
+    }).catch((e) => app.toast(tr('Automatic search failed: {error}', { error: String(e) }), 'warn'));
     const offs = [
       on<PrepareStep>('prepare://step', (p) => {
         const i = prep.findIndex((x) => x.id === p.id);
@@ -61,6 +65,11 @@
     };
   });
 
+  function setLanguage(v: LocaleSetting) {
+    s.ui.language = v;
+    app.applyLanguage();
+  }
+
   async function useGameFolder(path: string) {
     busy = true;
     try {
@@ -70,7 +79,7 @@
       s.paths.update = scan.update?.path ?? '';
       s.paths.dlc = scan.dlc.map((d) => d.path);
     } catch (e) {
-      app.toast(`Cartella non leggibile: ${e}`, 'error');
+      app.toast(tr('Folder not readable: {error}', { error: String(e) }), 'error');
     } finally {
       busy = false;
     }
@@ -81,7 +90,7 @@
       s.paths.prodKeys = path;
       s.paths.titleKeys = keys.titleKeysPath ?? '';
     } catch (e) {
-      app.toast(`File chiavi non valido: ${e}`, 'error');
+      app.toast(tr('Not a valid keys file: {error}', { error: String(e) }), 'error');
     }
   }
   async function useFirmware(path: string) {
@@ -89,24 +98,24 @@
       firmware = await api.inspectFirmware(path);
       s.paths.firmware = path;
     } catch (e) {
-      app.toast(`Firmware non valido: ${e}`, 'error');
+      app.toast(tr('Not a valid firmware: {error}', { error: String(e) }), 'error');
     }
   }
 
   async function chooseGame() {
-    const p = await pickPath({ directory: true, title: 'Cartella con il gioco, l\'aggiornamento e i DLC' });
+    const p = await pickPath({ directory: true, title: tr('Folder with the game, the update and the DLC') });
     if (p) await useGameFolder(p);
   }
   async function chooseKeys() {
-    const p = await pickPath({ title: 'Seleziona prod.keys', filters: [{ name: 'Chiavi', extensions: ['keys'] }] });
+    const p = await pickPath({ title: tr('Select prod.keys'), filters: [{ name: tr('Keys'), extensions: ['keys'] }] });
     if (p) await useKeys(p);
   }
   async function chooseFirmwareDir() {
-    const p = await pickPath({ directory: true, title: 'Cartella del firmware (file .nca)' });
+    const p = await pickPath({ directory: true, title: tr('Firmware folder (.nca files)') });
     if (p) await useFirmware(p);
   }
   async function chooseFirmwareZip() {
-    const p = await pickPath({ title: 'Archivio del firmware', filters: [{ name: 'Archivio ZIP', extensions: ['zip'] }] });
+    const p = await pickPath({ title: tr('Firmware archive'), filters: [{ name: tr('ZIP archive'), extensions: ['zip'] }] });
     if (p) await useFirmware(p);
   }
 
@@ -141,62 +150,86 @@
   function finish() {
     presets[s.preset === 'personalizzato' ? 'bilanciato' : s.preset].apply(s);
     s.setupDone = true;
-    app.page = 'home';
+    app.page = s.engine === 'online' ? 'online' : 'home';
   }
 
   function pkgTone(p: PackageInfo | null | undefined): 'verde' | 'giallo' | 'rosso' {
     if (!p) return 'rosso';
     return p.note ? 'giallo' : 'verde';
   }
-  const gb = (n: number) => (n / 1024 ** 3).toFixed(2).replace('.', ',') + ' GB';
+  const gb = (n: number) =>
+    (n / 1024 ** 3).toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' GB';
   const masterHex = (n: number | null) => (n === null ? '–' : n.toString(16).padStart(2, '0'));
   const gpu = $derived(app.system?.gpus[0] ?? null);
   const nvidia = $derived(app.system?.gpus.find((g) => g.vendor === 'nvidia') ?? null);
   const nativeAvailable = $derived(!!app.system?.nativeEngine || !!comp?.nativeDownloadable);
+  const stateLabel = (p: PrepareStep) =>
+    p.state === 'done'
+      ? tr('Done')
+      : p.state === 'running'
+        ? p.progress !== null
+          ? `${Math.round(p.progress * 100)}%`
+          : tr('Running')
+        : p.state === 'skipped'
+          ? tr('Not needed')
+          : p.state === 'error'
+            ? tr('Error')
+            : tr('Waiting');
 </script>
 
 <div class="wizard">
-  <ol class="rail" aria-label="Passaggi">
+  <ol class="rail" aria-label={tr('Steps')}>
     {#each steps as label, i (label)}
       <li class:done={i < step} class:current={i === step}>
         <span class="n data">{i + 1}</span>
-        <span>{label}</span>
+        <span>{tr(label)}</span>
       </li>
     {/each}
   </ol>
 
   <section class="panel">
     {#if step === 0}
-      <h1 class="display title">Prepariamo la tua copia</h1>
+      <h1 class="display title">{tr("Let's prepare your copy")}</h1>
       <p class="lead">
-        Deluxe8 trasforma i file del tuo gioco in una versione per PC, con risoluzione alta,
-        upscaling, frame generation e partite online in stanza. Ti servono tre cose, tutte tue:
+        {tr('Deluxe8 turns the files of your game into a PC version, with high resolution, upscaling, frame generation and online races. You need three things, all of them yours:')}
       </p>
       <ul class="needs">
-        <li><strong>Il gioco</strong> con l'aggiornamento 4.0.1 (e i DLC, se li hai), in formato NSP o NSZ.</li>
-        <li><strong>Le chiavi</strong> della tua console (<code>prod.keys</code>, e <code>title.keys</code> se l'hai).</li>
-        <li><strong>Il firmware</strong> della tua console, come cartella di file .nca oppure come .zip.</li>
+        <li><strong>{tr('The game')}</strong> {tr('with update 4.0.1 (and the DLC, if you have it), as NSP or NSZ.')}</li>
+        <li><strong>{tr('The keys')}</strong> {tr('of your console (prod.keys, and title.keys if you have it).')}</li>
+        <li><strong>{tr('The firmware')}</strong> {tr('of your console, as a folder of .nca files or as a .zip.')}</li>
       </ul>
       <p class="fine">
-        Deluxe8 non contiene nulla di Nintendo e non scarica giochi, chiavi o firmware. I file restano sul tuo
-        PC; quelli che crea (conversioni, cache) stanno nella cartella dati di Deluxe8.
+        {tr("Deluxe8 contains nothing from Nintendo and never downloads games, keys or firmware. Your files stay on your PC; the ones it creates (conversions, caches) live in Deluxe8's data folder.")}
       </p>
+      <div class="lang-pick">
+        <span class="fine">{tr('Language')}</span>
+        <Segmented
+          label={tr('Language')}
+          value={s.ui.language}
+          onchange={(v) => setLanguage(v)}
+          options={[
+            { value: 'auto', label: tr('Automatic ({name})', { name: autoName }) },
+            { value: 'en', label: 'English' },
+            { value: 'it', label: 'Italiano' },
+          ]}
+        />
+      </div>
     {:else if step === 1}
-      <h1 class="display title">Il tuo gioco</h1>
-      <p class="lead">Scegli la cartella che contiene il gioco base, l'aggiornamento e gli eventuali DLC.</p>
+      <h1 class="display title">{tr('Your game')}</h1>
+      <p class="lead">{tr('Choose the folder with the base game, the update and any DLC.')}</p>
       <div class="pick">
-        <button class="primary" onclick={chooseGame} data-autofocus>Scegli cartella</button>
+        <button class="primary" onclick={chooseGame} data-autofocus>{tr('Choose folder')}</button>
         {#if candidates?.gameFolders.length}
           {#each candidates.gameFolders.filter((f) => f !== scan?.folder) as f (f)}
-            <button class="ghost" onclick={() => useGameFolder(f)}>Usa {f}</button>
+            <button class="ghost" onclick={() => useGameFolder(f)}>{tr('Use {path}', { path: f })}</button>
           {/each}
         {/if}
       </div>
-      {#if busy}<p class="muted">Lettura dei file…</p>{/if}
+      {#if busy}<p class="muted">{tr('Reading the files…')}</p>{/if}
       {#if scan}
         <p class="path data">{scan.folder}</p>
         <div class="pkgs">
-          {#each [{ label: 'Gioco base', p: scan.base }, { label: 'Aggiornamento', p: scan.update }] as row (row.label)}
+          {#each [{ label: tr('Base game'), p: scan.base }, { label: tr('Update'), p: scan.update }] as row (row.label)}
             <div class="pkg {pkgTone(row.p)}">
               <span class="bar" aria-hidden="true"></span>
               <div class="pkg-main">
@@ -205,7 +238,7 @@
                   <span class="pkg-file">{row.p.fileName}</span>
                   {#if row.p.note}<span class="pkg-note">{row.p.note}</span>{/if}
                 {:else}
-                  <span class="pkg-note">Non trovato in questa cartella</span>
+                  <span class="pkg-note">{tr('Not found in this folder')}</span>
                 {/if}
               </div>
               {#if row.p}
@@ -230,51 +263,51 @@
         {#each scan.problems as p (p)}<p class="warn">{p}</p>{/each}
       {/if}
     {:else if step === 2}
-      <h1 class="display title">Chiavi e firmware</h1>
-      <p class="lead">Servono per leggere i file del gioco. Vengono copiati solo nella cartella dati di Deluxe8.</p>
+      <h1 class="display title">{tr('Keys and firmware')}</h1>
+      <p class="lead">{tr("They are needed to read the game's files. They are copied only into Deluxe8's data folder.")}</p>
       <div class="two">
         <div class="card {keys ? (keys.ok ? 'verde' : 'rosso') : ''}">
-          <h2>Chiavi</h2>
+          <h2>{tr('Keys')}</h2>
           {#if keys}
             <p class="path data">{keys.path}</p>
             <dl>
-              <dt>Voci lette</dt><dd class="data">{keys.count}</dd>
-              <dt>Chiave intestazioni</dt><dd>{keys.hasHeaderKey ? 'Presente' : 'Mancante'}</dd>
-              <dt>Revisione master key</dt><dd class="data">{masterHex(keys.maxMasterKeyRevision)}</dd>
-              <dt>title.keys</dt><dd>{keys.titleKeysCount !== null ? `${keys.titleKeysCount} voci` : 'Non trovato'}</dd>
+              <dt>{tr('Entries read')}</dt><dd class="data">{keys.count}</dd>
+              <dt>{tr('Header key')}</dt><dd>{keys.hasHeaderKey ? tr('Present') : tr('Missing')}</dd>
+              <dt>{tr('Master key revision')}</dt><dd class="data">{masterHex(keys.maxMasterKeyRevision)}</dd>
+              <dt>title.keys</dt><dd>{keys.titleKeysCount !== null ? tr('{n} entries', { n: keys.titleKeysCount }) : tr('Not found')}</dd>
             </dl>
             {#if keys.missingRequired.length}
-              <p class="warn">Mancano: {keys.missingRequired.join(', ')}</p>
+              <p class="warn">{tr('Missing: {names}', { names: keys.missingRequired.join(', ') })}</p>
             {/if}
           {:else}
-            <p class="muted">Nessun file selezionato.</p>
+            <p class="muted">{tr('No file selected.')}</p>
           {/if}
-          <button class="primary" onclick={chooseKeys} data-autofocus>Scegli prod.keys</button>
+          <button class="primary" onclick={chooseKeys} data-autofocus>{tr('Choose prod.keys')}</button>
         </div>
         <div class="card {firmware ? (firmware.ok ? 'verde' : 'rosso') : ''}">
-          <h2>Firmware</h2>
+          <h2>{tr('Firmware')}</h2>
           {#if firmware}
             <p class="path data">{firmware.path}</p>
             <dl>
-              <dt>Versione</dt><dd class="data">{firmware.versionHint ?? 'Non indicata'}</dd>
-              <dt>File NCA</dt><dd class="data">{firmware.ncaCount}</dd>
+              <dt>{tr('Version')}</dt><dd class="data">{firmware.versionHint ?? tr('Not stated')}</dd>
+              <dt>{tr('NCA files')}</dt><dd class="data">{firmware.ncaCount}</dd>
             </dl>
           {:else}
-            <p class="muted">Nessun firmware selezionato.</p>
+            <p class="muted">{tr('No firmware selected.')}</p>
           {/if}
           <div class="pick">
-            <button class="primary" onclick={chooseFirmwareDir}>Scegli cartella</button>
-            <button class="ghost" onclick={chooseFirmwareZip}>Scegli .zip</button>
+            <button class="primary" onclick={chooseFirmwareDir}>{tr('Choose folder')}</button>
+            <button class="ghost" onclick={chooseFirmwareZip}>{tr('Choose .zip')}</button>
           </div>
         </div>
       </div>
       {#if keys?.ok && firmware?.versionHint}
-        <p class="fine">Le chiavi devono essere della stessa versione del firmware o più recenti.</p>
+        <p class="fine">{tr('The keys must be the same version as the firmware, or newer.')}</p>
       {/if}
     {:else if step === 3}
-      <h1 class="display title">Scegli il motore</h1>
-      <p class="lead">Puoi cambiarlo quando vuoi dalla schermata Gioca.</p>
-      <div class="engines" role="radiogroup" aria-label="Motore" data-horizontal>
+      <h1 class="display title">{tr('Choose the engine')}</h1>
+      <p class="lead">{tr('You can change it any time from the Play screen.')}</p>
+      <div class="engines" role="radiogroup" aria-label={tr('Engine')} data-horizontal>
         <button
           class="engine"
           role="radio"
@@ -282,22 +315,21 @@
           disabled={!nativeAvailable}
           onclick={() => (s.engine = 'native')}
         >
-          <span class="e-name display">Nativo</span>
-          <span class="e-sub">Ricompilazione statica sul tuo PC</span>
+          <span class="e-name display">{tr('Native')}</span>
+          <span class="e-sub">{tr('Static recompilation on your PC')}</span>
           <ul>
-            <li>Il codice del gioco tradotto in programma x86-64, senza emulazione della CPU</li>
-            <li>FSR 3.1, DLSS e frame generation con vettori di movimento reali</li>
-            <li>HDR10, 720p–4K, render scale fino al 200%</li>
-            <li>Online non ancora disponibile</li>
+            <li>{tr("The game's code translated into an x86-64 program, with no CPU emulation")}</li>
+            <li>{tr('FSR 3.1, DLSS and frame generation with real motion vectors')}</li>
+            <li>{tr('HDR10, 720p to 4K, scene scale up to 200%')}</li>
+            <li>{tr('No online play yet')}</li>
           </ul>
           {#if !app.system?.nativeEngine}
             {#if comp?.nativeDownloadable}
               <span class="e-note">
-                Si scarica da GitHub durante la preparazione: Racing 8 DX Recomp v{comp.nativeVersion},
-                {comp.nativeDownloadMb} MB. Poi il gioco viene ricompilato sul tuo PC (5–15 minuti).
+                {tr('Downloaded from GitHub during the preparation: Racing 8 DX Recomp v{version}, {mb} MB. Then the game is recompiled on your PC (5 to 15 minutes).', { version: comp.nativeVersion, mb: comp.nativeDownloadMb })}
               </span>
             {:else}
-              <span class="e-warn">Motore Nativo non disponibile su questo PC</span>
+              <span class="e-warn">{tr('The Native engine is not available on this PC')}</span>
             {/if}
           {/if}
         </button>
@@ -308,14 +340,32 @@
           onclick={() => (s.engine = 'compat')}
           data-autofocus
         >
-          <span class="e-name display">Compat</span>
-          <span class="e-sub">Emulazione su misura (base Eden)</span>
+          <span class="e-name display">{tr('Emulator')}</span>
+          <span class="e-sub">{tr('Tailored Switch emulation')}</span>
           <ul>
-            <li>La massima compatibilità con tutte le modalità del gioco</li>
-            <li>Stanze online con altri giocatori</li>
-            <li>Risoluzione fino a 8x, FSR 1, SGSR, SMAA</li>
-            <li>Frame generation LSFG con il tuo Lossless Scaling</li>
+            <li>{tr('The widest compatibility with every mode of the game')}</li>
+            <li>{tr('Online rooms, also with players on other emulators')}</li>
+            <li>{tr('Resolution up to 8x, FSR 1, SGSR, SMAA')}</li>
+            <li>{tr('LSFG frame generation with your Lossless Scaling')}</li>
           </ul>
+        </button>
+        <button
+          class="engine"
+          role="radio"
+          aria-checked={s.engine === 'online'}
+          onclick={() => (s.engine = 'online')}
+        >
+          <span class="e-name display">{tr('Online')}</span>
+          <span class="e-sub">{tr('Ryujinx Nextendo on the Nextendo Network')}</span>
+          <ul>
+            <li>{tr('Worldwide races, tournaments and friends, like the original service')}</li>
+            <li>{tr('Race with players on consoles and on other emulators')}</li>
+            <li>{tr('Free Nextendo account, created on nextendo.network')}</li>
+            <li>{tr("Graphics set in Ryujinx's own window")}</li>
+          </ul>
+          <span class="e-note">
+            {tr('Downloaded during the preparation: Ryujinx Nextendo v{version}, {mb} MB, from the Nextendo team.', { version: comp?.onlineVersion ?? '…', mb: comp?.onlineDownloadMb ?? 42 })}
+          </span>
         </button>
       </div>
       {#if s.engine === 'native' && nvidia && comp?.dlssBuildable}
@@ -323,41 +373,40 @@
           <div class="dlss-text">
             <h2>NVIDIA DLSS</h2>
             {#if comp.dlssInstalled}
-              <p>Già pronto su questo PC (DLSS SDK {comp.dlssVersion}).</p>
+              <p>{tr('Already set up on this PC (DLSS SDK {version}).', { version: comp.dlssVersion })}</p>
             {:else}
               <p>
-                Scarica il DLSS SDK {comp.dlssVersion} da github.com/NVIDIA/DLSS ({comp.dlssDownloadMb} MB) e prepara il plugin
-                per la tua {nvidia.name}: super resolution, DLAA e frame generation nel motore Nativo.
+                {tr('Downloads the DLSS SDK {version} from github.com/NVIDIA/DLSS ({mb} MB) and builds the plugin for your {gpu}: super resolution, DLAA and frame generation in the Native engine.', { version: comp.dlssVersion, mb: comp.dlssDownloadMb, gpu: nvidia.name })}
               </p>
               <p class="fine">
-                I file di NVIDIA restano sul tuo PC e Deluxe8 non li condivide. Attivando il download accetti la
-                <button class="link" onclick={() => openUrl(comp!.dlssLicenseUrl)}>licenza del DLSS SDK di NVIDIA</button>.
+                {tr("NVIDIA's files stay on your PC and Deluxe8 never shares them. By turning on the download you accept the")}
+                <button class="link" onclick={() => openUrl(comp!.dlssLicenseUrl)}>{tr("licence of NVIDIA's DLSS SDK")}</button>.
               </p>
             {/if}
           </div>
           {#if !comp.dlssInstalled}
-            <Toggle bind:checked={s.native.dlss} label="Scarica e prepara NVIDIA DLSS" />
+            <Toggle bind:checked={s.native.dlss} label={tr('Download and build NVIDIA DLSS')} />
           {/if}
         </div>
       {/if}
       {#if gpu}
-        <p class="fine">Scheda video rilevata: <strong>{gpu.name}</strong>{gpu.vramMb ? `, ${Math.round(gpu.vramMb / 1024)} GB` : ''}.</p>
+        <p class="fine">{tr('Graphics card found:')} <strong>{gpu.name}</strong>{gpu.vramMb ? `, ${Math.round(gpu.vramMb / 1024)} GB` : ''}.</p>
       {/if}
     {:else}
-      <h1 class="display title">{prepDone?.ok ? 'Tutto pronto' : 'Preparazione'}</h1>
+      <h1 class="display title">{prepDone?.ok ? tr('All set') : tr('Preparation')}</h1>
       <p class="lead">
         {prepDone?.ok
-          ? 'Il gioco è pronto. La prima corsa compila gli shader: i primi secondi possono scattare.'
-          : 'Deluxe8 sta preparando i file. Le conversioni avvengono una sola volta.'}
+          ? s.engine === 'online'
+            ? tr('The game is ready. Sign in to the Nextendo Network from the Online page, then race.')
+            : tr('The game is ready. The first race compiles shaders: the first seconds may stutter.')
+          : tr('Deluxe8 is preparing the files. Conversions happen only once.')}
       </p>
       <ul class="prep">
         {#each prep as p (p.id)}
           <li class={p.state}>
             <div class="prep-head">
               <span class="prep-label">{p.label}</span>
-              <span class="prep-state">
-                {p.state === 'done' ? 'Fatto' : p.state === 'running' ? (p.progress !== null ? `${Math.round(p.progress * 100)}%` : 'In corso') : p.state === 'skipped' ? 'Non necessario' : p.state === 'error' ? 'Errore' : 'In attesa'}
-              </span>
+              <span class="prep-state">{stateLabel(p)}</span>
             </div>
             {#if p.state === 'running' && p.progress !== null}<Kerb value={p.progress} label={p.label} />{/if}
             {#if p.detail}<p class="prep-detail">{p.detail}</p>{/if}
@@ -366,27 +415,34 @@
       </ul>
       {#if prepDone && !prepDone.ok}
         <p class="warn">{prepDone.message}</p>
-        <button class="primary" onclick={startPrepare}>Riprova</button>
+        <button class="primary" onclick={startPrepare}>{tr('Try again')}</button>
       {/if}
     {/if}
   </section>
 
   <div class="actions">
     {#if step > 0 && step < 4}
-      <button class="ghost" onclick={() => (step -= 1)}>Indietro</button>
+      <button class="ghost" onclick={() => (step -= 1)}>{tr('Back')}</button>
     {/if}
     <span class="spacer"></span>
     {#if step < 4}
       <button class="primary next" disabled={!canNext || busy} onclick={next}>
-        {step === 3 ? 'Prepara il gioco' : 'Avanti'}
+        {step === 3 ? tr('Prepare the game') : tr('Next')}
       </button>
     {:else if prepDone?.ok}
-      <button class="primary next" onclick={finish} data-autofocus>Vai alla partenza</button>
+      <button class="primary next" onclick={finish} data-autofocus>{tr('Go to the start line')}</button>
     {/if}
   </div>
 </div>
 
 <style>
+  .lang-pick {
+    display: flex;
+    align-items: center;
+    gap: var(--s4);
+    margin-top: var(--s5);
+    flex-wrap: wrap;
+  }
   .wizard {
     max-width: 1040px;
     margin: 0 auto;
@@ -464,13 +520,6 @@
     color: var(--gesso-3);
     font-size: var(--fs-sm);
     max-width: 70ch;
-  }
-  code {
-    font-family: inherit;
-    font-stretch: 85%;
-    background: var(--pannello-2);
-    padding: 0 5px;
-    border-radius: 3px;
   }
   .pick {
     display: flex;
@@ -571,7 +620,7 @@
   }
   .engines {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--s4);
     margin-bottom: var(--s4);
   }

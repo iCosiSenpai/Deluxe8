@@ -85,7 +85,7 @@ impl NativeLayout {
 }
 
 fn layout(paths: &AppPaths) -> Result<NativeLayout, String> {
-    let root = paths.native_engine_dir().ok_or("Motore Nativo non presente su questo PC: rifai la preparazione")?;
+    let root = paths.native_engine_dir().ok_or(crate::tr!("The Native engine is not on this PC: run the preparation again"))?;
     Ok(NativeLayout::new(paths, root))
 }
 
@@ -164,9 +164,9 @@ pub fn prepare(
     cancel: &AtomicBool,
 ) -> Result<(), String> {
     let l = layout(paths)?;
-    let manifest = Manifest::load(paths).ok_or("Contenuti non pronti")?;
+    let manifest = Manifest::load(paths).ok_or(crate::tr!("The game files are not ready"))?;
     let emit = report;
-    emit("running", Some("File del gioco nella cartella del motore".into()), Some(0.0));
+    emit("running", Some(crate::tr!("Game files into the engine's folder").into()), Some(0.0));
     let placed = (|| -> std::io::Result<()> {
         place(Path::new(&manifest.base), &l.base())?;
         place(Path::new(&manifest.update), &l.update())?;
@@ -187,15 +187,15 @@ pub fn prepare(
         }
         Ok(())
     })();
-    placed.map_err(|e| format!("File del gioco non preparati per il motore Nativo: {e}"))?;
+    placed.map_err(|e| crate::tr!("Game files not prepared for the Native engine: {e}", e = e))?;
 
     let patches = wanted_patches(s, &manifest);
     if already_built(&l, &manifest, &patches) {
-        emit("done", Some("Gioco già ricompilato per questa versione del motore".into()), Some(1.0));
+        emit("done", Some(crate::tr!("Game already recompiled for this engine version").into()), Some(1.0));
         return Ok(());
     }
 
-    emit("running", Some("Traduzione del codice ARM64 in C e compilazione".into()), Some(0.0));
+    emit("running", Some(crate::tr!("Translating the ARM64 code to C and compiling").into()), Some(0.0));
     let setup = l.root.join(exe_name("kartrecomp-setup"));
     let mut cmd = std::process::Command::new(&setup);
     cmd.current_dir(&l.root)
@@ -228,7 +228,7 @@ pub fn prepare(
     for line in std::io::BufRead::lines(std::io::BufReader::new(stdout)).map_while(Result::ok) {
         if cancel.load(Ordering::Relaxed) {
             let _ = child.kill();
-            return Err("Annullato".into());
+            return Err(crate::tr!("Cancelled").into());
         }
         // "PROGRESS <permille> <text>"
         if let Some(rest) = line.strip_prefix("PROGRESS ") {
@@ -241,10 +241,10 @@ pub fn prepare(
     let reason = err_reader.join().unwrap_or_default().trim().to_string();
     if !status.success() {
         emit("error", Some(reason.clone()), None);
-        return Err(format!("Ricompilazione non riuscita: {reason}"));
+        return Err(crate::tr!("Recompilation failed: {reason}", reason = reason));
     }
     let _ = std::fs::write(l.module_dir().join("deluxe8.json"), patches_stamp(&patches));
-    emit("done", Some("Gioco ricompilato e verificato".into()), Some(1.0));
+    emit("done", Some(crate::tr!("Game recompiled and verified").into()), Some(1.0));
     Ok(())
 }
 
@@ -331,7 +331,7 @@ fn write_overlay_ini(l: &NativeLayout, s: &Settings) -> std::io::Result<()> {
 pub fn command(paths: &AppPaths, s: &Settings, _manifest: &Manifest) -> Result<(Command, PathBuf), String> {
     let l = layout(paths)?;
     if !l.module_dir().join(if cfg!(windows) { "recompiled_image.dll" } else { "librecompiled_image.so" }).is_file() {
-        return Err("Il gioco non è ancora ricompilato per il motore Nativo: rifai la preparazione".into());
+        return Err(crate::tr!("The game is not recompiled for the Native engine yet: run the preparation again").into());
     }
     write_overlay_ini(&l, s).map_err(|e| e.to_string())?;
     let mut std_cmd = std::process::Command::new(l.engine_exe());

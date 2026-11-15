@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from '../i18n.svelte';
   import { onMount } from 'svelte';
   import { app } from '../state.svelte';
   import SettingRow from '../components/SettingRow.svelte';
@@ -28,59 +29,56 @@
 </script>
 
 <section class="page">
-  <h1 class="display">Controlli</h1>
+  <h1 class="display">{tr('Controls')}</h1>
   <p class="lead">
-    I controller vengono riconosciuti e mappati da soli, compresi Pro Controller, Xbox, DualSense e 8BitDo.
-    Il primo controller collegato è il giocatore 1.
+    {tr('Controllers are recognised and mapped by themselves, Pro Controller, Xbox, DualSense and 8BitDo included. The first controller connected is player 1.')}
   </p>
 
-  <h2>Collegati ora</h2>
+  <h2>{tr('Connected now')}</h2>
   <div class="sheet">
     {#if pads.length}
       {#each pads as p (p.index)}
         <div class="pad">
-          <span class="slot display">G{p.index + 1}</span>
+          <span class="slot display">{tr('P{n}', { n: p.index + 1 })}</span>
           <span class="name">{p.id.replace(/\(.*?\)/g, '').trim()}</span>
-          <span class="quiet data">{p.buttons} tasti</span>
+          <span class="quiet data">{tr('{n} buttons', { n: p.buttons })}</span>
         </div>
       {/each}
     {:else}
-      <p class="empty">Nessun controller rilevato. Collegane uno o premi un tasto per svegliarlo.</p>
+      <p class="empty">{tr('No controller found. Connect one, or press a button to wake it up.')}</p>
     {/if}
   </div>
 
-  <h2>Partita</h2>
+  <h2>{tr('Match')}</h2>
   <div class="sheet">
-    <SettingRow label="Giocatori sullo stesso PC" description="Da 2 a 4 lo schermo si divide come sulla console.">
+    <SettingRow label={tr('Players on this PC')} description={tr('With 2 to 4 players the screen splits as on the console.')}>
       <Segmented
-        label="Giocatori"
+        label={tr('Players')}
         bind:value={s.controls.players}
         options={[1, 2, 3, 4].map((n) => ({ value: n, label: String(n) }))}
       />
     </SettingRow>
     <SettingRow
-      label="60 fps a schermo diviso"
-      description="Con 3 o 4 giocatori il gioco disegna ogni riquadro a 30 fps: questa modifica li porta a 60 (solo aggiornamento 4.0.1). Pesa molto sulla CPU; nel motore Nativo serve una nuova ricompilazione, che parte dalla preparazione."
+      label={tr('60 fps split screen')}
+      description={tr('With 3 or 4 players the game draws each view at 30 fps: this patch makes it 60 (update 4.0.1 only). Heavy on the CPU; the Native engine needs a new recompilation, which the preparation starts.')}
     >
-      <Toggle label="60 fps a schermo diviso" bind:checked={s.controls.split60} />
+      <Toggle label={tr('60 fps split screen')} bind:checked={s.controls.split60} />
     </SettingRow>
-    <SettingRow label="Vibrazione" description="HD Rumble tradotto per il tuo controller.">
-      <Toggle label="Vibrazione" bind:checked={s.controls.rumble} />
+    <SettingRow label={tr('Rumble')} description={tr('HD Rumble translated for your controller.')}>
+      <Toggle label={tr('Rumble')} bind:checked={s.controls.rumble} />
     </SettingRow>
-    <SettingRow label="Sensore di movimento" description="Per la guida col giroscopio, se il controller lo ha.">
-      <Toggle label="Sensore di movimento" bind:checked={s.controls.motion} />
+    <SettingRow label={tr('Motion sensor')} description={tr('For gyro steering, if your controller has one.')}>
+      <Toggle label={tr('Motion sensor')} bind:checked={s.controls.motion} />
     </SettingRow>
   </div>
 
-  <h2>Menu rapido in gioco</h2>
+  <h2>{tr('Quick menu in game')}</h2>
   <div class="sheet combo">
     <div class="keys">
       <kbd>L3</kbd><span>+</span><kbd>R3</kbd>
     </div>
     <p>
-      Premi insieme le due levette per aprire il menu Deluxe8 durante la partita: filtro di scala, nitidezza,
-      frame generation, volume, stanza online ed uscita. Da tastiera usa <kbd>F1</kbd>. Mentre il menu è aperto il
-      gioco non riceve comandi.
+      {tr('Press both sticks together to open the Deluxe8 menu during a race: scaling filter, sharpness, frame generation, volume, online room and quit. On a keyboard use F1. While the menu is open the game gets no input.')}
     </p>
   </div>
 </section>
@@ -150,9 +148,5 @@
     border-radius: 6px;
     background: var(--gesso);
     color: var(--asfalto);
-  }
-  p kbd {
-    font-size: var(--fs-sm);
-    padding: 1px 6px;
   }
 </style>

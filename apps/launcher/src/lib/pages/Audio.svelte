@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from '../i18n.svelte';
   import { app } from '../state.svelte';
   import SettingRow from '../components/SettingRow.svelte';
   import Segmented from '../components/Segmented.svelte';
@@ -11,18 +12,18 @@
 <section class="page">
   <h1 class="display">Audio</h1>
   <div class="sheet">
-    <SettingRow label="Volume" description="Si regola anche in gioco dal menu L3 + R3.">
-      <Slider label="Volume" bind:value={s.audio.volume} min={0} max={100} step={5} format={(v) => `${v}%`} />
+    <SettingRow label={tr('Volume')} description={tr('Also adjustable in game from the L3 + R3 menu.')}>
+      <Slider label={tr('Volume')} bind:value={s.audio.volume} min={0} max={100} step={5} format={(v) => `${v}%`} />
     </SettingRow>
-    <SettingRow label="Silenzia quando la finestra non è attiva" description="Utile se giochi in finestra.">
-      <Toggle label="Silenzia in background" bind:checked={s.audio.muteInBackground} />
+    <SettingRow label={tr('Mute when the window is not active')} description={tr('Handy if you play in a window.')}>
+      <Toggle label={tr('Mute in the background')} bind:checked={s.audio.muteInBackground} />
     </SettingRow>
-    <SettingRow label="Uscita audio" description="Automatica sceglie la più stabile per il tuo sistema.">
+    <SettingRow label={tr('Audio output')} description={tr('Automatic picks the most stable one for your system.')}>
       <Segmented
-        label="Uscita audio"
+        label={tr('Audio output')}
         bind:value={s.audio.output}
         options={[
-          { value: 'auto', label: 'Automatica', recommended: true },
+          { value: 'auto', label: tr('Automatic'), recommended: true },
           { value: 'cubeb', label: 'Cubeb' },
           { value: 'sdl', label: 'SDL' },
         ]}

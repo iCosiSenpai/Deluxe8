@@ -12,6 +12,7 @@ Deluxe8 is a tailored PC runtime for the user's **own** copy of Mario Kart 8 Del
 | Launcher | `apps/launcher` | Tauri 2 app (Rust backend in `src-tauri`, Svelte 5 + TypeScript UI in `src`). Setup wizard, settings, online rooms, mods, logs. |
 | Compat engine | `engine/` | Eden (Switch emulator, GPL-3.0) pinned in `engine/upstream.json` + our patch queue `engine/patches/*.patch` + our own code `engine/src/deluxe8` (in-game overlay, telemetry, controller auto-map). Built as `deluxe8-engine` / `deluxe8-room`. |
 | Native engine | `tools/native.ps1` | Static recompilation toolchain from Racing 8 DX Recomp (GPL-3.0): exports the game's AArch64 code to C and compiles it on the user's PC. Built into `out/native/<platform>`. |
+| Online engine | `src-tauri/src/nextendo.rs` | Ryujinx Nextendo (MIT), downloaded by the launcher: online play on the community-run Nextendo Network. |
 | Switch formats | `crates/nx` | Rust crate `d8-nx`: PFS0, CNMT, NSZ→NSP (SHA-256 verified), keys and firmware inspection. Used by the launcher. |
 
 ## Hard rules
@@ -89,6 +90,10 @@ Compat: environment variables set by the launcher: `DELUXE8_USER_DIR`, `DELUXE8_
 `hello`, `running`, `perf` (fps, frametime_ms, speed), `overlay` (open), `setting` (key, value), `controller`, `room`.
 The launcher mirrors `setting` events into its own settings so in-game changes persist.
 
+Online engine: `Ryujinx -r <data>/online [--fullscreen] --docked-mode --system-language <Name> --system-region <Name>
+<base.nsp>`; `nextendo.rs` writes keys, firmware (`registered/<id>.nca/00` hard links), `games/<id>/updates.json` and
+`dlc.json`, and marks Ryujinx's first-start wizard as done. The Nextendo account file holds a token: never read or log it.
+
 Online rooms: eden-cli's `-m nick[:password]@address:port` (no `:` when the room has no password: `nick:@...` is
 silently dropped by its parser). Room passwords never go into logs.
 
@@ -109,6 +114,16 @@ certificates, thumbprints of personal certificates or signing credentials. Detai
 
 The webview cannot open paths (`opener:allow-open-path` is not granted): folders open through the `open_folder` command,
 which accepts only Deluxe8's own folders. Keep it that way.
+
+## Names and languages
+
+- Players see **Emulator** (code: `compat`, `EngineKind::Compat`), **Native** and **Online**. Do not put "Eden" in
+  player-facing comparisons; credit it in licences and credits.
+- English is the source text everywhere. UI: `tr('English text')` with Italian in `src/lib/i18n/it/<area>.ts`
+  (`pnpm check` runs `scripts/check-i18n.mjs`: every literal needs a translation, no key may get two). Words that
+  translate differently by context take a prefix: `tr('framegen|Off')`. Backend: `tr!("English {name}", name = x)` with
+  `src-tauri/src/i18n_table.rs` (a test keeps it complete). Overlay: `L("English", "Italiano")`, language from
+  `DELUXE8_LANGUAGE`. "auto" = Italian when the desktop language is Italian or the country is IT/SM/VA.
 
 ## UI design system (launcher and overlay)
 

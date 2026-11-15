@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { app, pages, type PageId } from '../state.svelte';
+  import { tr } from '../i18n.svelte';
+  import { app, pages, engineName, type PageId } from '../state.svelte';
 
   let { badges = {} }: { badges?: Partial<Record<PageId, 'viola' | 'verde' | 'giallo' | 'rosso'>> } =
     $props();
 
-  const engineLabel = $derived(app.settings.engine === 'native' ? 'Nativo' : 'Compat');
+  const engineLabel = $derived(engineName(app.settings.engine));
 </script>
 
-<nav class="tower" aria-label="Sezioni">
+<nav class="tower" aria-label={tr('Sections')}>
   <ol>
     {#each pages as p (p.id)}
       <li>
@@ -18,8 +19,8 @@
           onclick={() => (app.page = p.id)}
         >
           <span class="flag {badges[p.id] ?? ''}" aria-hidden="true"></span>
-          <span class="label">{p.label}</span>
-          <span class="hint">{p.hint}</span>
+          <span class="label">{tr(p.label)}</span>
+          <span class="hint">{tr(p.hint)}</span>
         </button>
       </li>
     {/each}
@@ -27,11 +28,11 @@
 
   <div class="status">
     <div class="line">
-      <span class="quiet">Motore</span>
+      <span class="quiet">{tr('Engine')}</span>
       <span class="val">{engineLabel}</span>
     </div>
     <div class="line">
-      <span class="quiet">Gioco</span>
+      <span class="quiet">{tr('Game')}</span>
       <span class="val data">4.0.1</span>
     </div>
     {#if app.launch.running}

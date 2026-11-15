@@ -1,18 +1,18 @@
 # Graphics: resolution, upscaling, frame generation
 
-Status as of November 2026. "Native" = static recompilation engine, "Compat" = tailored Eden engine.
+Status as of November 2026. "Native" = static recompilation engine, "Emulator" (called Compat in the code) = the tailored Eden engine.
 
 ## Why the two engines differ
 
 Temporal upscalers (DLSS Super Resolution/DLAA, FSR 2/3.1/4, XeSS) and in-engine frame generation need **per-pixel motion
 vectors, depth and a jittered camera**. An emulator only sees the console GPU's command stream, so it cannot supply them:
-Compat is limited to *spatial* filters, native-resolution rendering and *optical-flow* frame generation (which only needs
+The Emulator engine is limited to *spatial* filters, native-resolution rendering and *optical-flow* frame generation (which only needs
 two finished frames). The Native engine translates the game's own graphics calls to Vulkan and reconstructs a depth-based
 motion-vector pipeline with sub-pixel jitter, so temporal upscalers and FSR/DLSS frame generation work there.
 
 ## Availability
 
-| Technology | Kind | Compat | Native | RTX 5070 Ti |
+| Technology | Kind | Emulator | Native | RTX 5070 Ti |
 |---|---|---|---|---|
 | Internal resolution 0.5x–8x | supersampling | yes | 720p–4K output, scene 33–200% | yes |
 | AMD FSR 1 (EASU + RCAS) | spatial | yes | yes | yes |
@@ -70,7 +70,7 @@ fps readout.
 
 - **NVIDIA Smooth Motion** (RTX 40/50): driver-level frame generation that also works on Vulkan applications, enabled per
   program in the NVIDIA App. NVIDIA explicitly mentions emulators locked to fixed frame rates as a target.
-- **Lossless Scaling (LSFG)**: Compat integrates Eden's port of lsfg-vk. Deluxe8 copies *your* `Lossless.dll` from your
+- **Lossless Scaling (LSFG)**: the Emulator engine integrates Eden's port of lsfg-vk. Deluxe8 copies *your* `Lossless.dll` from your
   Steam installation into the engine's data folder; it is never bundled.
 
 All interpolation adds latency (about half a source frame at 2x). MK8D runs its game logic at 60 Hz, so frame generation

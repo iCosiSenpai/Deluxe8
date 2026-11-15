@@ -33,6 +33,22 @@ pub const NATIVE_PACKAGE: Remote = Remote {
     sha256: "8a54f6404037ef1fb913acd47ca7a069d6cc9d90822a65a0d63ed52970db411a",
 };
 
+/// Ryujinx Nextendo, the Online engine (Nextendo team, MIT), from their Forgejo releases.
+pub const ONLINE_VERSION: &str = "1.10.6";
+
+#[cfg(windows)]
+pub const ONLINE_PACKAGE: Remote = Remote {
+    url: "https://git.nextendo.network/NextendoNetwork/Ryujinx-Nextendo/releases/download/v1.10.6/Nextendo-1.10.6-win-x64.zip",
+    size: 42_190_874,
+    sha256: "17d65eaf3f23f940d21d457a8f1a6528bff56231c6d7e7d152bbd646c1732a19",
+};
+#[cfg(not(windows))]
+pub const ONLINE_PACKAGE: Remote = Remote {
+    url: "https://git.nextendo.network/NextendoNetwork/Ryujinx-Nextendo/releases/download/v1.10.6/Nextendo-1.10.6-linux-x64.tar.gz",
+    size: 39_645_254,
+    sha256: "d61e336c1ac385918b2c32e29e882f437077f81dfb4122e8c75d6b55d19f9226",
+};
+
 pub const DLSS_SDK_VERSION: &str = "310.9.16";
 const DLSS_REPO: &str = "NVIDIA/DLSS";
 const DLSS_COMMIT: &str = "9981c6350dc58c0ce21f024fd65e31e851c31689"; // "DLSS 310.9.16 SDK"
@@ -138,7 +154,7 @@ pub fn download(
             .send()
             .await
             .and_then(|r| r.error_for_status())
-            .map_err(|e| format!("download di {url} non riuscito: {e}"))?;
+            .map_err(|e| crate::tr!("Download of {url} failed: {e}", url = url, e = e))?;
         let mut file = std::fs::File::create(&part).map_err(|e| e.to_string())?;
         let mut hasher = Sha256::new();
         let mut done = 0u64;
@@ -146,11 +162,11 @@ pub fn download(
             // a stalled connection ends the download instead of hanging the preparation, and "Annulla" works while waiting
             let next = tokio::select! {
                 next = tokio::time::timeout(STALL_TIMEOUT, response.chunk()) => next,
-                _ = cancelled(cancel) => return Err("Annullato".to_string()),
+                _ = cancelled(cancel) => return Err(crate::tr!("Cancelled").to_string()),
             };
             let next = next
-                .map_err(|_| format!("download fermo da {} secondi: controlla la connessione e riprova", STALL_TIMEOUT.as_secs()))?
-                .map_err(|e| format!("download interrotto: {e}"))?;
+                .map_err(|_| crate::tr!("The download stalled for {s} seconds: check the connection and try again", s = STALL_TIMEOUT.as_secs()))?
+                .map_err(|e| crate::tr!("Download interrupted: {e}", e = e))?;
             let Some(chunk) = next else { break };
             file.write_all(&chunk).map_err(|e| e.to_string())?;
             hasher.update(&chunk);
@@ -159,11 +175,11 @@ pub fn download(
         }
         file.flush().map_err(|e| e.to_string())?;
         if done != size {
-            return Err(format!("{url}: ricevuti {done} byte invece di {size}"));
+            return Err(crate::tr!("{url}: received {done} bytes instead of {size}", url = url, done = done, size = size));
         }
         let got = hex(&hasher.finalize());
         if got != sha256 {
-            return Err(format!("{url}: il file scaricato non corrisponde (SHA-256 {got})"));
+            return Err(crate::tr!("{url}: the downloaded file does not match (SHA-256 {got})", url = url, got = got));
         }
         Ok(())
     });
@@ -227,14 +243,14 @@ pub fn ensure_native_engine(
                 if last.elapsed().as_millis() >= 250 || done == total {
                     last = std::time::Instant::now();
                     report(
-                        format!("Download da GitHub: {} di {} MB", done / 1_000_000, total / 1_000_000),
+                        crate::tr!("Downloading from GitHub: {done} of {total} MB", done = done / 1_000_000, total = total / 1_000_000),
                         Some(0.9 * done as f64 / total as f64),
                     );
                 }
             },
             cancel,
         )?;
-        report("Estrazione".into(), Some(0.9));
+        report(crate::tr!("Unpacking").into(), Some(0.9));
         let dest = paths.native_install_dir();
         let partial = dest.with_file_name(format!(".v{NATIVE_VERSION}.partial"));
         if partial.exists() {
@@ -243,7 +259,7 @@ pub fn ensure_native_engine(
         extract_zip(&zip_path, &partial, cancel)?;
         if !partial.join("engine").join(exe_name("mk8d-engine")).is_file() {
             let _ = std::fs::remove_dir_all(&partial);
-            return Err("L'archivio del motore Nativo non contiene engine/mk8d-engine.exe".into());
+            return Err(crate::tr!("The Native engine archive has no engine/mk8d-engine.exe").into());
         }
         if dest.exists() {
             std::fs::remove_dir_all(&dest).map_err(|e| e.to_string())?;
@@ -251,14 +267,13 @@ pub fn ensure_native_engine(
         std::fs::rename(&partial, &dest).map_err(|e| e.to_string())?;
         let _ = std::fs::remove_file(&zip_path); // 200 MB that are now unpacked
         logs::write(&format!("native engine v{NATIVE_VERSION} installed in {}", dest.display()));
-        report("Installato".into(), Some(1.0));
+        report(crate::tr!("Installed").into(), Some(1.0));
         Ok(dest)
     }
 }
 
 /// Unpacks a zip, dropping a single top-level folder (the release zip holds `win-x64/...`). Entry names are checked: nothing
 /// is written outside `dest`.
-#[cfg_attr(not(windows), allow(dead_code))]
 fn extract_zip(zip_path: &Path, dest: &Path, cancel: &AtomicBool) -> Result<(), String> {
     let file = std::fs::File::open(zip_path).map_err(|e| e.to_string())?;
     let mut zip = zip::ZipArchive::new(std::io::BufReader::new(file)).map_err(|e| e.to_string())?;
@@ -275,7 +290,7 @@ fn extract_zip(zip_path: &Path, dest: &Path, cancel: &AtomicBool) -> Result<(), 
     let strip = !top.is_empty() && names.iter().all(|n| first(n) == top && n.len() > top.len());
     for (i, name) in names.iter().enumerate() {
         if cancel.load(Ordering::Relaxed) {
-            return Err("Annullato".into());
+            return Err(crate::tr!("Cancelled").into());
         }
         let rel = if strip { &name[top.len() + 1..] } else { name.as_str() };
         if rel.is_empty() {
@@ -283,7 +298,7 @@ fn extract_zip(zip_path: &Path, dest: &Path, cancel: &AtomicBool) -> Result<(), 
         }
         let parts: Vec<&str> = rel.split('/').filter(|p| !p.is_empty()).collect();
         if parts.iter().any(|p| *p == ".." || p.contains(':')) || rel.starts_with('/') {
-            return Err(format!("percorso non valido nell'archivio: {name}"));
+            return Err(crate::tr!("Invalid path in the archive: {name}", name = name));
         }
         let out_path = parts.iter().fold(dest.to_path_buf(), |acc, p| acc.join(p));
         let mut entry = zip.by_index(i).map_err(|e| e.to_string())?;
@@ -299,6 +314,77 @@ fn extract_zip(zip_path: &Path, dest: &Path, cancel: &AtomicBool) -> Result<(), 
     }
     Ok(())
 }
+
+// ------------------------------------------------------------------------------------------ Online engine
+
+/// Makes sure Ryujinx Nextendo is on this PC: the pinned release, downloaded and unpacked into
+/// `<data>/engines/online/v<version>` (the archive's single `publish` folder is dropped).
+pub fn ensure_online_engine(
+    paths: &AppPaths,
+    report: &mut dyn FnMut(String, Option<f64>),
+    cancel: &AtomicBool,
+) -> Result<PathBuf, String> {
+    if let Some(dir) = paths.online_engine_dir() {
+        return Ok(dir);
+    }
+    let archive = paths.downloads.join(NAME_ONLINE_ARCHIVE);
+    let mut last = std::time::Instant::now();
+    download(
+        ONLINE_PACKAGE.url,
+        &archive,
+        ONLINE_PACKAGE.size,
+        ONLINE_PACKAGE.sha256,
+        &mut |done, total| {
+            if last.elapsed().as_millis() >= 250 || done == total {
+                last = std::time::Instant::now();
+                report(
+                    crate::tr!("Downloading from Nextendo: {done} of {total} MB", done = done / 1_000_000, total = total / 1_000_000),
+                    Some(0.9 * done as f64 / total as f64),
+                );
+            }
+        },
+        cancel,
+    )?;
+    report(crate::tr!("Unpacking").into(), Some(0.9));
+    let dest = paths.online_install_dir();
+    let partial = dest.with_file_name(format!(".v{ONLINE_VERSION}.partial"));
+    if partial.exists() {
+        std::fs::remove_dir_all(&partial).map_err(|e| e.to_string())?;
+    }
+    if cfg!(windows) {
+        extract_zip(&archive, &partial, cancel)?;
+    } else {
+        // the Linux build is a tar.gz: every Linux system has tar
+        std::fs::create_dir_all(&partial).map_err(|e| e.to_string())?;
+        run(Path::new("tar"), &["-xzf".into(), archive.display().to_string(), "-C".into(), partial.display().to_string()], &partial)?;
+        let inner = partial.join("publish");
+        if inner.is_dir() {
+            let flat = partial.with_file_name(format!(".v{ONLINE_VERSION}.flat"));
+            let _ = std::fs::remove_dir_all(&flat);
+            std::fs::rename(&inner, &flat).map_err(|e| e.to_string())?;
+            std::fs::remove_dir_all(&partial).map_err(|e| e.to_string())?;
+            std::fs::rename(&flat, &partial).map_err(|e| e.to_string())?;
+        }
+    }
+    if !crate::nextendo::exe(&partial).is_file() {
+        let _ = std::fs::remove_dir_all(&partial);
+        return Err(crate::tr!("The Ryujinx Nextendo archive has no Ryujinx executable").into());
+    }
+    if dest.exists() {
+        std::fs::remove_dir_all(&dest).map_err(|e| e.to_string())?;
+    }
+    std::fs::rename(&partial, &dest).map_err(|e| e.to_string())?;
+    let _ = std::fs::remove_file(&archive);
+    logs::write(&format!("Ryujinx Nextendo v{ONLINE_VERSION} installed in {}", dest.display()));
+    report(crate::tr!("Installed").into(), Some(1.0));
+    Ok(dest)
+}
+
+const NAME_ONLINE_ARCHIVE: &str = if cfg!(windows) {
+    "Nextendo-1.10.6-win-x64.zip"
+} else {
+    "Nextendo-1.10.6-linux-x64.tar.gz"
+};
 
 // ------------------------------------------------------------------------------------------ DLSS
 
@@ -319,6 +405,12 @@ pub struct ComponentsStatus {
     pub dlss_download_mb: u64,
     pub dlss_license_url: String,
     pub dlss_buildable: bool,
+    pub online_version: String,
+    /// Folder of Ryujinx Nextendo when it is on this PC.
+    pub online_engine: Option<String>,
+    pub online_download_mb: u64,
+    /// A Nextendo Network account is linked in Ryujinx Nextendo.
+    pub nextendo_signed_in: bool,
 }
 
 pub fn status(paths: &AppPaths) -> ComponentsStatus {
@@ -334,6 +426,10 @@ pub fn status(paths: &AppPaths) -> ComponentsStatus {
         dlss_download_mb: (DLSS_FILES.iter().chain(VK_FILES).map(|f| f.1).sum::<u64>()).div_ceil(1_000_000),
         dlss_license_url: DLSS_LICENSE_URL.into(),
         dlss_buildable: cfg!(windows) && paths.dlss_plugin_src.is_some(),
+        online_version: ONLINE_VERSION.into(),
+        online_engine: paths.online_engine_dir().map(|p| p.display().to_string()),
+        online_download_mb: ONLINE_PACKAGE.size.div_ceil(1_000_000),
+        nextendo_signed_in: crate::nextendo::signed_in(paths),
     }
 }
 
@@ -346,12 +442,12 @@ pub fn install_dlss(
     cancel: &AtomicBool,
 ) -> Result<String, String> {
     if !cfg!(windows) {
-        return Err("Su Linux il plugin DLSS si prepara con plugins/dlss/install-linux.sh di Racing 8 DX Recomp".into());
+        return Err(crate::tr!("On Linux the DLSS plugin is set up with plugins/dlss/install-linux.sh from Racing 8 DX Recomp").into());
     }
-    let src = paths.dlss_plugin_src.clone().ok_or("Sorgenti del plugin DLSS non trovati nell'installazione di Deluxe8")?;
+    let src = paths.dlss_plugin_src.clone().ok_or(crate::tr!("The DLSS plugin sources are missing from the Deluxe8 installation"))?;
     let clang = native_root.join("toolchain").join("bin").join(exe_name("clang"));
     if !clang.is_file() {
-        return Err(format!("Toolchain del motore Nativo non trovata ({})", clang.display()));
+        return Err(crate::tr!("The Native engine's toolchain was not found ({path})", path = clang.display()));
     }
 
     // 1. NVIDIA's SDK files and the Khronos headers, straight from their GitHub repositories
@@ -376,7 +472,7 @@ pub fn install_dlss(
                     last = std::time::Instant::now();
                     let now = before + done;
                     report(
-                        format!("Download da GitHub (NVIDIA, Khronos): {} di {} MB", now / 1_000_000, total.div_ceil(1_000_000)),
+                        crate::tr!("Downloading from GitHub (NVIDIA, Khronos): {done} of {total} MB", done = now / 1_000_000, total = total.div_ceil(1_000_000)),
                         Some(0.8 * now as f64 / total as f64),
                     );
                 }
@@ -387,7 +483,7 @@ pub fn install_dlss(
     }
 
     // 2. compile with the Native engine's own toolchain (llvm-mingw, no C++ standard library needed)
-    report("Compilazione del plugin per questo PC".into(), Some(0.82));
+    report(crate::tr!("Building the plugin for this PC").into(), Some(0.82));
     let work = paths.data.join("cache").join("dlss-build");
     if work.exists() {
         std::fs::remove_dir_all(&work).map_err(|e| e.to_string())?;
@@ -407,9 +503,9 @@ pub fn install_dlss(
         a.extend(["-o".to_string(), p(&work.join(obj))]);
         a
     };
-    run(&clang, &cxx("kr_upscaler_dlss.cpp", "plugin.o"), &work).map_err(|e| format!("compilazione del plugin DLSS: {e}"))?;
-    run(&clang, &cxx("msvc_shim.cpp", "shim.o"), &work).map_err(|e| format!("compilazione del plugin DLSS: {e}"))?;
-    report("Collegamento con la libreria NGX di NVIDIA".into(), Some(0.9));
+    run(&clang, &cxx("kr_upscaler_dlss.cpp", "plugin.o"), &work).map_err(|e| crate::tr!("Building the DLSS plugin: {e}", e = e))?;
+    run(&clang, &cxx("msvc_shim.cpp", "shim.o"), &work).map_err(|e| crate::tr!("Building the DLSS plugin: {e}", e = e))?;
+    report(crate::tr!("Linking with NVIDIA's NGX library").into(), Some(0.9));
     let mut link: Vec<String> = ["--target=x86_64-w64-mingw32", "-shared", "-fuse-ld=lld", "-rtlib=compiler-rt", "-unwindlib=none", "-nostdlib++"]
         .iter()
         .map(|s| s.to_string())
@@ -419,7 +515,7 @@ pub fn install_dlss(
     link.extend(["-lvcruntime140", "-ladvapi32", "-luser32", "-lshell32", "-lole32"].iter().map(|s| s.to_string()));
     // the NGX library asks for MSVC's OLDNAMES and msvcprt: the few symbols it needs come from msvc_shim.cpp instead
     link.extend(["-Xlinker", "-Xlink=-nodefaultlib:OLDNAMES", "-Xlinker", "-Xlink=-nodefaultlib:msvcprt"].iter().map(|s| s.to_string()));
-    run(&clang, &link, &work).map_err(|e| format!("collegamento del plugin DLSS: {e}"))?;
+    run(&clang, &link, &work).map_err(|e| crate::tr!("Linking the DLSS plugin: {e}", e = e))?;
     let forwarder: Vec<String> = vec![
         "--target=x86_64-w64-mingw32".into(),
         "-O2".into(),
@@ -432,10 +528,10 @@ pub fn install_dlss(
         p(&work.join("kr_framegen_dlss.dll")),
         p(&src.join("forwarder.c")),
     ];
-    run(&clang, &forwarder, &work).map_err(|e| format!("compilazione del forwarder DLSS: {e}"))?;
+    run(&clang, &forwarder, &work).map_err(|e| crate::tr!("Building the DLSS forwarder: {e}", e = e))?;
 
     // 3. install beside NVIDIA's runtime snippets, in the engine's plugin folder inside Deluxe8's data
-    report("Installazione".into(), Some(0.96));
+    report(crate::tr!("Installing").into(), Some(0.96));
     let plugins = native_plugins_dir(paths);
     std::fs::create_dir_all(&plugins).map_err(|e| e.to_string())?;
     for (from, name) in [
@@ -454,8 +550,8 @@ pub fn install_dlss(
     let _ = std::fs::write(plugins.join(DLSS_STAMP), serde_json::to_vec_pretty(&stamp).unwrap_or_default());
     let _ = std::fs::remove_dir_all(&work);
     logs::write(&format!("DLSS plugin built and installed in {}", plugins.display()));
-    report("Pronto".into(), Some(1.0));
-    Ok(format!("DLSS {DLSS_SDK_VERSION} pronto per questo PC"))
+    report(crate::tr!("Ready").into(), Some(1.0));
+    Ok(crate::tr!("DLSS {version} ready for this PC", version = DLSS_SDK_VERSION))
 }
 
 #[cfg(test)]

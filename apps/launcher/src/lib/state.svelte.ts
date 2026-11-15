@@ -1,18 +1,25 @@
 import { api, demo, on } from './api';
 import { defaultSettings } from './defaults';
-import type { EngineEvent, LaunchState, Settings, SystemInfo } from './types';
+import { resolveLocale, setLocale, tr } from './i18n.svelte';
+import type { EngineEvent, EngineKind, LaunchState, Settings, SystemInfo } from './types';
 
 export type PageId = 'home' | 'grafica' | 'controlli' | 'audio' | 'online' | 'mod' | 'sistema';
 
+/** Sections of the launcher; labels and hints are English source text, shown through `tr`. */
 export const pages: { id: PageId; label: string; hint: string }[] = [
-  { id: 'home', label: 'Gioca', hint: 'Avvio e riepilogo' },
-  { id: 'grafica', label: 'Grafica', hint: 'Risoluzione, upscaling, fluidità' },
-  { id: 'controlli', label: 'Controlli', hint: 'Controller e scorciatoie' },
-  { id: 'audio', label: 'Audio', hint: 'Volume e uscita' },
-  { id: 'online', label: 'Online', hint: 'Stanze e partite in rete' },
-  { id: 'mod', label: 'Mod', hint: 'Contenuti aggiuntivi' },
-  { id: 'sistema', label: 'Sistema', hint: 'File, log e informazioni' },
+  { id: 'home', label: 'Play', hint: 'Start and summary' },
+  { id: 'grafica', label: 'Graphics', hint: 'Resolution, upscaling, smoothness' },
+  { id: 'controlli', label: 'Controls', hint: 'Controllers and shortcuts' },
+  { id: 'audio', label: 'Audio', hint: 'Volume and output' },
+  { id: 'online', label: 'Online', hint: 'Online races and rooms' },
+  { id: 'mod', label: 'Mods', hint: 'Extra content' },
+  { id: 'sistema', label: 'System', hint: 'Files, language, logs' },
 ];
+
+/** The engines as players see them. */
+export function engineName(engine: EngineKind): string {
+  return engine === 'native' ? tr('Native') : engine === 'online' ? tr('Online') : tr('Emulator');
+}
 
 type Tone = 'info' | 'ok' | 'warn' | 'error';
 
@@ -40,10 +47,17 @@ class AppState {
     const [settings, system] = await Promise.all([api.getSettings(), api.systemInfo()]);
     this.settings = settings;
     this.system = system;
+    this.applyLanguage();
     const start = demo?.get('page');
     if (start && pages.some((p) => p.id === start)) this.page = start as PageId;
     this.loaded = true;
     this.#listenEngine();
+  }
+
+  /** Interface language from the setting ("auto": the system's language and country). */
+  applyLanguage() {
+    const forced = demo?.get('lang');
+    setLocale(forced === 'en' || forced === 'it' ? forced : resolveLocale(this.settings.ui.language, this.system?.locale));
   }
 
   /** Persist settings shortly after the last change. */
@@ -52,7 +66,7 @@ class AppState {
     if (this.#saveTimer) clearTimeout(this.#saveTimer);
     this.#saveTimer = setTimeout(() => {
       api.saveSettings($state.snapshot(this.settings) as Settings).catch((e) =>
-        this.toast(`Impostazioni non salvate: ${e}`, 'error'),
+        this.toast(tr('Settings not saved: {error}', { error: String(e) }), 'error'),
       );
     }, 350);
   }
@@ -98,7 +112,7 @@ class AppState {
         fps: null,
         frametimeMs: null,
         speed: null,
-        lastError: crashed ? (e.message ?? `Il motore si è chiuso con codice ${e.code}`) : null,
+        lastError: crashed ? (e.message ?? tr('The engine closed with code {code}', { code: String(e.code) })) : null,
       };
       if (crashed) this.toast(this.launch.lastError!, 'error', 8000);
     });

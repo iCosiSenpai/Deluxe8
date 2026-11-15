@@ -20,6 +20,20 @@ pub struct Settings {
     pub online: Online,
     pub system: SystemPrefs,
     pub native: NativePrefs,
+    pub ui: UiPrefs,
+}
+
+/// The launcher's own preferences.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct UiPrefs {
+    /// Interface language: "auto" (Italian in Italy or on an Italian desktop, English otherwise), "en" or "it".
+    pub language: String,
+}
+impl Default for UiPrefs {
+    fn default() -> Self {
+        Self { language: "auto".into() }
+    }
 }
 
 /// Components of the Native engine the preparation downloads.
@@ -34,8 +48,11 @@ pub struct NativePrefs {
 #[serde(rename_all = "lowercase")]
 pub enum EngineKind {
     Native,
+    /// The Emulator engine (Eden-based).
     #[default]
     Compat,
+    /// Ryujinx Nextendo on the Nextendo Network.
+    Online,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -178,7 +195,7 @@ impl Default for Online {
             host_port: 24872,
             max_players: 8,
             password: String::new(),
-            room_name: "Stanza Deluxe8".into(),
+            room_name: "Deluxe8 room".into(),
             upnp: true,
         }
     }
@@ -192,11 +209,19 @@ pub struct SystemPrefs {
 }
 impl Default for SystemPrefs {
     fn default() -> Self {
-        Self { language: "it".into(), region: "eur".into() }
+        Self { language: "auto".into(), region: "eur".into() }
     }
 }
 
 impl Settings {
+    /// The game's language: the setting, or the interface language when it is "auto".
+    pub fn game_language(&self) -> &str {
+        match self.system.language.as_str() {
+            "auto" | "" => crate::i18n::code(),
+            other => other,
+        }
+    }
+
     pub fn load(path: &std::path::Path) -> Settings {
         let mut s: Settings = match std::fs::read_to_string(path) {
             Ok(text) => serde_json::from_str(&text).unwrap_or_else(|e| {

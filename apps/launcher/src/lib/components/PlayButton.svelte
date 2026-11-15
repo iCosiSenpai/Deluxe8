@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from '../i18n.svelte';
   /**
    * The one orchestrated moment: five start lights come on one by one, go out together,
    * and the race starts. Reduced motion skips straight to the launch.
@@ -53,12 +54,12 @@
   {#if running}
     <div class="race">
       <span class="live" aria-hidden="true"></span>
-      <span class="race-label">In gara</span>
-      <button class="stop" onclick={onstop}>Termina il gioco</button>
+      <span class="race-label">{tr('Racing')}</span>
+      <button class="stop" onclick={onstop}>{tr('Quit the game')}</button>
     </div>
   {:else}
     <button class="go display" data-autofocus {disabled} onclick={start} aria-describedby="go-reason">
-      {sequencing ? 'Pronti…' : 'Gioca'}
+      {sequencing ? tr('Ready…') : tr('Play')}
     </button>
     {#if disabled && reason}<p id="go-reason" class="reason">{reason}</p>{/if}
   {/if}
