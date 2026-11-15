@@ -180,7 +180,7 @@ def hero(w, h, *, mark_size, mark_x, word_size, tag_size, chip_size, chip_h, pad
     body.append(f'<path transform="translate({tx - b[0] * scale:.1f} {base:.1f}) scale({scale:.4f})" d="{d}" fill="{GESSO}"/>')
     ty = top + word_h + tag_size * 1.15
     body.append(f'<path transform="translate({tx:.1f} {ty:.1f})" d="{tag_d}" fill="{GESSO_2}"/>')
-    labels = ['DLSS', 'FSR 3.1', 'FRAME GEN', 'HDR10', '4K', 'ONLINE ROOMS']
+    labels = ['DLSS', 'FSR 3.1', 'FRAME GEN', 'HDR10', '4K', 'ONLINE']
     cy = ty + tag_size * 0.75
     row, roww = chips(labels, tx, cy, chip_size, chip_h, chip_h * 0.32)
     if roww > avail:  # fewer chips on narrow canvases
