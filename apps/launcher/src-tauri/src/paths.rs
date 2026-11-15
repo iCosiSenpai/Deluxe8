@@ -170,6 +170,17 @@ impl AppPaths {
             .cloned()
     }
 
+    /// Ryujinx Nextendo (the Online engine) when it has been downloaded.
+    pub fn online_engine_dir(&self) -> Option<PathBuf> {
+        let dir = self.online_install_dir();
+        crate::nextendo::exe(&dir).is_file().then_some(dir)
+    }
+
+    /// Where Ryujinx Nextendo goes.
+    pub fn online_install_dir(&self) -> PathBuf {
+        self.engines.join("online").join(format!("v{}", crate::components::ONLINE_VERSION))
+    }
+
     /// Where a downloaded Native engine goes.
     pub fn native_install_dir(&self) -> PathBuf {
         self.engines.join("native").join(format!("v{}", crate::components::NATIVE_VERSION))

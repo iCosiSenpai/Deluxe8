@@ -15,11 +15,12 @@
   import { app, pages } from './lib/state.svelte';
   import { installGamepadNav, installKeyboardNav, moveFocus } from './lib/nav';
   import { demo } from './lib/api';
+  import { tr } from './lib/i18n.svelte';
 
   let pad = $state<string | null>(null);
 
   onMount(() => {
-    app.init().catch((e) => app.toast(`Avvio non riuscito: ${e}`, 'error', 10000));
+    app.init().catch((e) => app.toast(tr('Could not start: {error}', { error: String(e) }), 'error', 10000));
     const back = () => {
       if (document.querySelector('[data-nav-scope]')) {
         window.dispatchEvent(new CustomEvent('d8:back'));
@@ -63,9 +64,9 @@
 </script>
 
 <div class="shell">
-  <TitleBar subtitle={app.settings.setupDone ? '' : 'Preparazione'} />
+  <TitleBar subtitle={app.settings.setupDone ? '' : tr('Preparation')} />
   {#if !app.loaded}
-    <main class="loading"><p class="muted">Caricamento…</p></main>
+    <main class="loading"><p class="muted">{tr('Loading…')}</p></main>
   {:else if !app.settings.setupDone}
     <main class="setup"><Setup /></main>
   {:else}

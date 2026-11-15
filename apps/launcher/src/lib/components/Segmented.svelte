@@ -1,4 +1,5 @@
 <script lang="ts" generics="T extends string | number">
+  import { tr } from '../i18n.svelte';
   /** Radio group as connected chips. Left/right (and the D-pad) change the value. */
   let {
     value = $bindable(),
@@ -42,7 +43,7 @@
       {onkeydown}
     >
       {o.label}
-      {#if o.recommended}<span class="sr-only">(consigliato)</span>{/if}
+      {#if o.recommended}<span class="sr-only">({tr('recommended')})</span>{/if}
     </button>
   {/each}
 </div>

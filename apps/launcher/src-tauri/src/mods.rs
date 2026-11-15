@@ -69,7 +69,7 @@ pub fn list(paths: &AppPaths) -> Vec<ModInfo> {
 
 pub fn set_enabled(paths: &AppPaths, name: &str, enabled: bool) -> Result<(), String> {
     if name.contains(['/', '\\']) || name == ".." || name.is_empty() {
-        return Err("Nome non valido".into());
+        return Err(crate::tr!("Invalid name").into());
     }
     let (from, to) = if enabled {
         (paths.mods_disabled_dir(), paths.mods_dir())

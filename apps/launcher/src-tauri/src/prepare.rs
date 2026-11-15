@@ -92,13 +92,13 @@ fn copy_small(src: &Path, dst: &Path) -> std::io::Result<()> {
 fn install_keys(paths: &AppPaths, s: &Settings) -> Result<String, String> {
     let keys_dir = paths.compat_user.join("keys");
     copy_small(Path::new(&s.paths.prod_keys), &keys_dir.join("prod.keys")).map_err(|e| format!("prod.keys: {e}"))?;
-    let mut detail = "prod.keys".to_string();
+    let mut files = vec!["prod.keys"];
     if !s.paths.title_keys.is_empty() && Path::new(&s.paths.title_keys).is_file() {
         copy_small(Path::new(&s.paths.title_keys), &keys_dir.join("title.keys"))
             .map_err(|e| format!("title.keys: {e}"))?;
-        detail.push_str(" e title.keys");
+        files.push("title.keys");
     }
-    Ok(format!("Copiati {detail}"))
+    Ok(crate::tr!("Copied {files}", files = files.join(", ")))
 }
 
 /// Removes packages an earlier preparation left in a content folder and this one no longer uses (another update, a DLC
@@ -152,10 +152,10 @@ fn install_firmware(paths: &AppPaths, s: &Settings, rep: &Reporter, cancel: &Ato
             .collect()
     };
     if entries.is_empty() {
-        return Err("Nessun file .nca trovato nel firmware".into());
+        return Err(crate::tr!("No .nca files found in the firmware").into());
     }
     if std::fs::read_to_string(&marker).ok().as_deref() == Some(&firmware_marker(&s.paths.firmware, entries.len())) {
-        return Ok("Già installato".into());
+        return Ok(crate::tr!("Already installed").into());
     }
     if registered.exists() {
         std::fs::remove_dir_all(&registered).map_err(|e| e.to_string())?;
@@ -174,7 +174,7 @@ fn install_firmware(paths: &AppPaths, s: &Settings, rep: &Reporter, cancel: &Ato
             let file_name = Path::new(name).file_name().unwrap_or_default();
             let mut out = std::fs::File::create(registered.join(file_name)).map_err(|e| e.to_string())?;
             std::io::copy(&mut entry, &mut out).map_err(|e| e.to_string())?;
-            rep.step("firmware", "Installazione del firmware", "running", None, Some((i + 1) as f64 / total as f64));
+            rep.step("firmware", L_FIRMWARE(), "running", None, Some((i + 1) as f64 / total as f64));
         }
     } else {
         for (i, (name, path)) in entries.iter().enumerate() {
@@ -183,12 +183,12 @@ fn install_firmware(paths: &AppPaths, s: &Settings, rep: &Reporter, cancel: &Ato
             }
             std::fs::copy(path.as_ref().unwrap(), registered.join(name)).map_err(|e| e.to_string())?;
             if i % 8 == 0 || i + 1 == total {
-                rep.step("firmware", "Installazione del firmware", "running", None, Some((i + 1) as f64 / total as f64));
+                rep.step("firmware", L_FIRMWARE(), "running", None, Some((i + 1) as f64 / total as f64));
             }
         }
     }
     std::fs::write(&marker, firmware_marker(&s.paths.firmware, total)).map_err(|e| e.to_string())?;
-    Ok(format!("{total} file NCA installati"))
+    Ok(crate::tr!("{total} NCA files installed", total = total))
 }
 
 /// Converts an NSZ to a verified NSP in `dest_dir`, or links/copies an NSP. Returns the result path.
@@ -222,7 +222,7 @@ fn place_package(
         if last.elapsed().as_millis() > 200 || done == total {
             last = std::time::Instant::now();
             let frac = if total > 0 { done as f64 / total as f64 } else { 0.0 };
-            rep.step(id, label, "running", Some("Decompressione e verifica SHA-256".into()), Some(frac));
+            rep.step(id, label, "running", Some(crate::tr!("Decompressing and checking SHA-256").into()), Some(frac));
         }
     };
     let summary = d8_nx::ncz::nsz_to_nsp(src, &dest, &mut progress, cancel).map_err(|e| e.to_string())?;
@@ -235,6 +235,32 @@ fn place_package(
         summary.elapsed.as_secs_f64()
     ));
     Ok(dest)
+}
+
+// Preparation step labels, in the launcher's language.
+#[allow(non_snake_case)]
+fn L_KEYS() -> &'static str {
+    crate::tr!("Copying the keys")
+}
+#[allow(non_snake_case)]
+fn L_FIRMWARE() -> &'static str {
+    crate::tr!("Installing the firmware")
+}
+#[allow(non_snake_case)]
+fn L_BASE() -> &'static str {
+    crate::tr!("Base game to NSP")
+}
+#[allow(non_snake_case)]
+fn L_UPDATE() -> &'static str {
+    crate::tr!("Update to NSP")
+}
+#[allow(non_snake_case)]
+fn L_DLC() -> &'static str {
+    crate::tr!("Extra content")
+}
+#[allow(non_snake_case)]
+fn L_CONFIG() -> &'static str {
+    crate::tr!("Configuring the engine")
 }
 
 fn version_label(v: u32) -> String {
@@ -250,12 +276,12 @@ pub fn run(app: AppHandle, paths: AppPaths, s: Settings, cancel: Arc<AtomicBool>
     let rep = Reporter { app };
     paths.ensure().map_err(|e| e.to_string())?;
     let steps: [(&str, &str); 6] = [
-        ("keys", "Copia delle chiavi"),
-        ("firmware", "Installazione del firmware"),
-        ("base", "Gioco base in NSP"),
-        ("update", "Aggiornamento in NSP"),
-        ("dlc", "Contenuti aggiuntivi"),
-        ("config", "Configurazione del motore"),
+        ("keys", L_KEYS()),
+        ("firmware", L_FIRMWARE()),
+        ("base", L_BASE()),
+        ("update", L_UPDATE()),
+        ("dlc", L_DLC()),
+        ("config", L_CONFIG()),
     ];
     for (id, label) in steps {
         rep.step(id, label, "pending", None, None);
@@ -266,56 +292,56 @@ pub fn run(app: AppHandle, paths: AppPaths, s: Settings, cancel: Arc<AtomicBool>
         e
     };
 
-    rep.step("keys", "Copia delle chiavi", "running", None, None);
-    let d = install_keys(&paths, &s).map_err(|e| fail("keys", "Copia delle chiavi", e))?;
-    rep.step("keys", "Copia delle chiavi", "done", Some(d), Some(1.0));
+    rep.step("keys", L_KEYS(), "running", None, None);
+    let d = install_keys(&paths, &s).map_err(|e| fail("keys", L_KEYS(), e))?;
+    rep.step("keys", L_KEYS(), "done", Some(d), Some(1.0));
 
-    rep.step("firmware", "Installazione del firmware", "running", None, Some(0.0));
-    let d = install_firmware(&paths, &s, &rep, &cancel).map_err(|e| fail("firmware", "Installazione del firmware", e))?;
-    rep.step("firmware", "Installazione del firmware", "done", Some(d), Some(1.0));
+    rep.step("firmware", L_FIRMWARE(), "running", None, Some(0.0));
+    let d = install_firmware(&paths, &s, &rep, &cancel).map_err(|e| fail("firmware", L_FIRMWARE(), e))?;
+    rep.step("firmware", L_FIRMWARE(), "done", Some(d), Some(1.0));
 
-    let base_info = d8_nx::package::inspect(&s.paths.base).map_err(|e| fail("base", "Gioco base in NSP", e.to_string()))?;
-    rep.step("base", "Gioco base in NSP", "running", None, Some(0.0));
+    let base_info = d8_nx::package::inspect(&s.paths.base).map_err(|e| fail("base", L_BASE(), e.to_string()))?;
+    rep.step("base", L_BASE(), "running", None, Some(0.0));
     let base = place_package(
         Path::new(&s.paths.base),
         &paths.content_base,
         &format!("base-{}.nsp", version_label(base_info.version)),
         "base",
-        "Gioco base in NSP",
+        L_BASE(),
         &rep,
         &cancel,
     )
-    .map_err(|e| fail("base", "Gioco base in NSP", e))?;
-    rep.step("base", "Gioco base in NSP", "done", Some(base.display().to_string()), Some(1.0));
+    .map_err(|e| fail("base", L_BASE(), e))?;
+    rep.step("base", L_BASE(), "done", Some(base.display().to_string()), Some(1.0));
 
     let update_info =
-        d8_nx::package::inspect(&s.paths.update).map_err(|e| fail("update", "Aggiornamento in NSP", e.to_string()))?;
-    rep.step("update", "Aggiornamento in NSP", "running", None, Some(0.0));
+        d8_nx::package::inspect(&s.paths.update).map_err(|e| fail("update", L_UPDATE(), e.to_string()))?;
+    rep.step("update", L_UPDATE(), "running", None, Some(0.0));
     let update = place_package(
         Path::new(&s.paths.update),
         &paths.content_updates,
         &format!("update-{}.nsp", version_label(update_info.version)),
         "update",
-        "Aggiornamento in NSP",
+        L_UPDATE(),
         &rep,
         &cancel,
     )
-    .map_err(|e| fail("update", "Aggiornamento in NSP", e))?;
-    rep.step("update", "Aggiornamento in NSP", "done", Some(update.display().to_string()), Some(1.0));
+    .map_err(|e| fail("update", L_UPDATE(), e))?;
+    rep.step("update", L_UPDATE(), "done", Some(update.display().to_string()), Some(1.0));
 
     let mut dlc = Vec::new();
     if s.paths.dlc.is_empty() {
-        rep.step("dlc", "Contenuti aggiuntivi", "skipped", Some("Nessun DLC".into()), None);
+        rep.step("dlc", L_DLC(), "skipped", Some(crate::tr!("No DLC").into()), None);
     } else {
-        rep.step("dlc", "Contenuti aggiuntivi", "running", None, None);
+        rep.step("dlc", L_DLC(), "running", None, None);
         for (i, path) in s.paths.dlc.iter().enumerate() {
             let src = Path::new(path);
             let name = format!("dlc-{i}.{}", src.extension().and_then(|e| e.to_str()).unwrap_or("nsp"));
-            let placed = place_package(src, &paths.content_updates, &name.replace(".nsz", ".nsp"), "dlc", "Contenuti aggiuntivi", &rep, &cancel)
-                .map_err(|e| fail("dlc", "Contenuti aggiuntivi", e))?;
+            let placed = place_package(src, &paths.content_updates, &name.replace(".nsz", ".nsp"), "dlc", L_DLC(), &rep, &cancel)
+                .map_err(|e| fail("dlc", L_DLC(), e))?;
             dlc.push(placed.display().to_string());
         }
-        rep.step("dlc", "Contenuti aggiuntivi", "done", Some(format!("{} pacchetti", dlc.len())), Some(1.0));
+        rep.step("dlc", L_DLC(), "done", Some(crate::tr!("{n} packages", n = dlc.len())), Some(1.0));
     }
 
     let dlc_paths: Vec<PathBuf> = dlc.iter().map(PathBuf::from).collect();
@@ -324,8 +350,8 @@ pub fn run(app: AppHandle, paths: AppPaths, s: Settings, cancel: Arc<AtomicBool>
     prune_content(&paths.content_updates, &keep_updates);
     prune_content(&paths.content_base, &[base.as_path()]);
 
-    rep.step("config", "Configurazione del motore", "running", None, None);
-    eden::write_config(&paths.compat_user, &s).map_err(|e| fail("config", "Configurazione del motore", e.to_string()))?;
+    rep.step("config", L_CONFIG(), "running", None, None);
+    eden::write_config(&paths.compat_user, &s).map_err(|e| fail("config", L_CONFIG(), e.to_string()))?;
     Manifest {
         base: base.display().to_string(),
         update: update.display().to_string(),
@@ -333,60 +359,82 @@ pub fn run(app: AppHandle, paths: AppPaths, s: Settings, cancel: Arc<AtomicBool>
         update_version: update_info.version,
     }
     .save(&paths)
-    .map_err(|e| fail("config", "Configurazione del motore", e.to_string()))?;
-    rep.step("config", "Configurazione del motore", "done", None, Some(1.0));
+    .map_err(|e| fail("config", L_CONFIG(), e.to_string()))?;
+    rep.step("config", L_CONFIG(), "done", None, Some(1.0));
 
+    if s.engine == EngineKind::Online {
+        prepare_online(&rep, &paths, &cancel)?;
+    }
     if s.engine == EngineKind::Native {
         prepare_native(&rep, &paths, &s, &cancel)?;
     }
     Ok(())
 }
 
+/// Online engine: download Ryujinx Nextendo if needed and put the game, keys and firmware where it reads them.
+fn prepare_online(rep: &Reporter, paths: &AppPaths, cancel: &AtomicBool) -> Result<(), String> {
+    let label = crate::tr!("Ryujinx Nextendo");
+    rep.step("online-engine", label, "running", None, Some(0.0));
+    let root = crate::components::ensure_online_engine(
+        paths,
+        &mut |detail, progress| rep.step("online-engine", label, "running", Some(detail), progress),
+        cancel,
+    )
+    .inspect_err(|e| rep.step("online-engine", label, "error", Some(e.clone()), None))?;
+    rep.step("online-engine", label, "done", Some(root.display().to_string()), Some(1.0));
+    let manifest = Manifest::load(paths).ok_or(crate::tr!("The game files are not ready"))?;
+    let setup = crate::tr!("Game, keys and firmware for Ryujinx Nextendo");
+    rep.step("online", setup, "running", None, None);
+    crate::nextendo::prepare(paths, &manifest).inspect_err(|e| rep.step("online", setup, "error", Some(e.clone()), None))?;
+    rep.step("online", setup, "done", None, Some(1.0));
+    Ok(())
+}
+
 /// Native engine: download it if this PC has none, build the game for it, and (if asked, on Windows) download and build DLSS.
 fn prepare_native(rep: &Reporter, paths: &AppPaths, s: &Settings, cancel: &AtomicBool) -> Result<(), String> {
-    const ENGINE: (&str, &str) = ("native-engine", "Motore Nativo");
-    const DLSS: (&str, &str) = ("dlss", "NVIDIA DLSS per questo PC");
-    rep.step(ENGINE.0, ENGINE.1, "pending", None, None);
-    rep.step("native", "Ricompilazione del gioco (motore Nativo)", "pending", None, None);
+    let engine_step: (&str, &str) = ("native-engine", crate::tr!("Native engine"));
+    let dlss_step: (&str, &str) = ("dlss", crate::tr!("NVIDIA DLSS for this PC"));
+    rep.step(engine_step.0, engine_step.1, "pending", None, None);
+    rep.step("native", crate::tr!("Recompiling the game (Native engine)"), "pending", None, None);
     if s.native.dlss {
-        rep.step(DLSS.0, DLSS.1, "pending", None, None);
+        rep.step(dlss_step.0, dlss_step.1, "pending", None, None);
     }
 
-    rep.step(ENGINE.0, ENGINE.1, "running", None, Some(0.0));
+    rep.step(engine_step.0, engine_step.1, "running", None, Some(0.0));
     let had_engine = paths.native_engine_dir();
     let root = crate::components::ensure_native_engine(
         paths,
-        &mut |detail, progress| rep.step(ENGINE.0, ENGINE.1, "running", Some(detail), progress),
+        &mut |detail, progress| rep.step(engine_step.0, engine_step.1, "running", Some(detail), progress),
         cancel,
     )
-    .inspect_err(|e| rep.step(ENGINE.0, ENGINE.1, "error", Some(e.clone()), None))?;
+    .inspect_err(|e| rep.step(engine_step.0, engine_step.1, "error", Some(e.clone()), None))?;
     let detail = match had_engine {
-        Some(_) => format!("Già presente ({})", root.display()),
-        None => format!("Racing 8 DX Recomp v{} scaricato da GitHub", crate::components::NATIVE_VERSION),
+        Some(_) => crate::tr!("Already here ({path})", path = root.display()),
+        None => crate::tr!("Racing 8 DX Recomp v{version} downloaded from GitHub", version = crate::components::NATIVE_VERSION),
     };
-    rep.step(ENGINE.0, ENGINE.1, "done", Some(detail), Some(1.0));
+    rep.step(engine_step.0, engine_step.1, "done", Some(detail), Some(1.0));
 
     crate::native::prepare(
-        &|state, detail, progress| rep.step("native", "Ricompilazione del gioco (motore Nativo)", state, detail, progress),
+        &|state, detail, progress| rep.step("native", crate::tr!("Recompiling the game (Native engine)"), state, detail, progress),
         paths,
         s,
         cancel,
     )?;
 
     if s.native.dlss {
-        rep.step(DLSS.0, DLSS.1, "running", None, Some(0.0));
+        rep.step(dlss_step.0, dlss_step.1, "running", None, Some(0.0));
         let result = crate::components::install_dlss(
             paths,
             &root,
-            &mut |detail, progress| rep.step(DLSS.0, DLSS.1, "running", Some(detail), progress),
+            &mut |detail, progress| rep.step(dlss_step.0, dlss_step.1, "running", Some(detail), progress),
             cancel,
         );
         match result {
-            Ok(detail) => rep.step(DLSS.0, DLSS.1, "done", Some(detail), Some(1.0)),
+            Ok(detail) => rep.step(dlss_step.0, dlss_step.1, "done", Some(detail), Some(1.0)),
             Err(e) => {
                 // the game still plays (FSR 3.1 / FSR 1): report it, don't fail the whole preparation
                 logs::write(&format!("DLSS setup failed: {e}"));
-                rep.step(DLSS.0, DLSS.1, "error", Some(format!("{e}. Il gioco funziona lo stesso con FSR.")), None);
+                rep.step(dlss_step.0, dlss_step.1, "error", Some(crate::tr!("{e}. The game still works with FSR.", e = e)), None);
             }
         }
     }
@@ -398,30 +446,42 @@ pub fn install_component(app: AppHandle, paths: AppPaths, name: &str, cancel: Ar
     let rep = Reporter { app };
     match name {
         "native" => {
-            rep.step("native-engine", "Motore Nativo", "running", None, Some(0.0));
+            rep.step("native-engine", crate::tr!("Native engine"), "running", None, Some(0.0));
             let root = crate::components::ensure_native_engine(
                 &paths,
-                &mut |detail, progress| rep.step("native-engine", "Motore Nativo", "running", Some(detail), progress),
+                &mut |detail, progress| rep.step("native-engine", crate::tr!("Native engine"), "running", Some(detail), progress),
                 &cancel,
             )
-            .inspect_err(|e| rep.step("native-engine", "Motore Nativo", "error", Some(e.clone()), None))?;
-            rep.step("native-engine", "Motore Nativo", "done", Some(root.display().to_string()), Some(1.0));
+            .inspect_err(|e| rep.step("native-engine", crate::tr!("Native engine"), "error", Some(e.clone()), None))?;
+            rep.step("native-engine", crate::tr!("Native engine"), "done", Some(root.display().to_string()), Some(1.0));
+            Ok(())
+        }
+        "online" => {
+            let label = crate::tr!("Ryujinx Nextendo");
+            rep.step("online-engine", label, "running", None, Some(0.0));
+            let root = crate::components::ensure_online_engine(
+                &paths,
+                &mut |detail, progress| rep.step("online-engine", label, "running", Some(detail), progress),
+                &cancel,
+            )
+            .inspect_err(|e| rep.step("online-engine", label, "error", Some(e.clone()), None))?;
+            rep.step("online-engine", label, "done", Some(root.display().to_string()), Some(1.0));
             Ok(())
         }
         "dlss" => {
-            let root = paths.native_engine_dir().ok_or("Prima serve il motore Nativo")?;
-            rep.step("dlss", "NVIDIA DLSS per questo PC", "running", None, Some(0.0));
+            let root = paths.native_engine_dir().ok_or(crate::tr!("The Native engine comes first"))?;
+            rep.step("dlss", crate::tr!("NVIDIA DLSS for this PC"), "running", None, Some(0.0));
             let detail = crate::components::install_dlss(
                 &paths,
                 &root,
-                &mut |detail, progress| rep.step("dlss", "NVIDIA DLSS per questo PC", "running", Some(detail), progress),
+                &mut |detail, progress| rep.step("dlss", crate::tr!("NVIDIA DLSS for this PC"), "running", Some(detail), progress),
                 &cancel,
             )
-            .inspect_err(|e| rep.step("dlss", "NVIDIA DLSS per questo PC", "error", Some(e.clone()), None))?;
-            rep.step("dlss", "NVIDIA DLSS per questo PC", "done", Some(detail), Some(1.0));
+            .inspect_err(|e| rep.step("dlss", crate::tr!("NVIDIA DLSS for this PC"), "error", Some(e.clone()), None))?;
+            rep.step("dlss", crate::tr!("NVIDIA DLSS for this PC"), "done", Some(detail), Some(1.0));
             Ok(())
         }
-        other => Err(format!("componente sconosciuto: {other}")),
+        other => Err(crate::tr!("Unknown component: {name}", name = other)),
     }
 }
 

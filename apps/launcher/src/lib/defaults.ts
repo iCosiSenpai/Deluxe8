@@ -38,17 +38,18 @@ export const defaultSettings: Settings = {
     roomName: 'Stanza Deluxe8',
     upnp: true,
   },
-  system: { language: 'it', region: 'eur' },
+  system: { language: 'auto', region: 'eur' },
+  ui: { language: 'auto' },
   native: { dlss: false },
 };
 
 export type PresetId = Exclude<Settings['preset'], 'personalizzato'>;
 
-/** What each preset changes. Everything else keeps the user's value. */
+/** What each preset changes. Everything else keeps the user's value. Label and summary are English source text. */
 export const presets: Record<PresetId, { label: string; summary: string; apply: (s: Settings) => void }> = {
   qualita: {
-    label: 'Qualità',
-    summary: 'Massima definizione per schermi 1440p e 4K.',
+    label: 'Quality',
+    summary: 'The sharpest image, for 1440p and 4K screens.',
     apply: (s) => {
       s.image.compatScale = 6;
       s.image.renderScale = 150;
@@ -58,8 +59,8 @@ export const presets: Record<PresetId, { label: string; summary: string; apply: 
     },
   },
   bilanciato: {
-    label: 'Bilanciato',
-    summary: 'Nitido e stabile a 60 fps su quasi ogni scheda video recente.',
+    label: 'Balanced',
+    summary: 'Sharp and steady at 60 fps on almost any recent graphics card.',
     apply: (s) => {
       s.image.compatScale = 5;
       s.image.renderScale = 100;
@@ -69,8 +70,8 @@ export const presets: Record<PresetId, { label: string; summary: string; apply: 
     },
   },
   prestazioni: {
-    label: 'Prestazioni',
-    summary: 'Per PC portatili e schede video entry level.',
+    label: 'Performance',
+    summary: 'For laptops and entry-level graphics cards.',
     apply: (s) => {
       s.image.compatScale = 3;
       s.image.renderScale = 58;
@@ -80,8 +81,8 @@ export const presets: Record<PresetId, { label: string; summary: string; apply: 
     },
   },
   competitivo: {
-    label: 'Competitivo',
-    summary: 'Latenza minima: niente frame generation, V-Sync a bassa latenza.',
+    label: 'Competitive',
+    summary: 'Lowest latency: no frame generation, low-latency V-Sync.',
     apply: (s) => {
       s.image.compatScale = 3;
       s.image.renderScale = 100;

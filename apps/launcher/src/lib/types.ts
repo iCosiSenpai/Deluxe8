@@ -1,6 +1,9 @@
 // Shared types between the Svelte UI and the Rust backend (serde camelCase).
 
-export type EngineKind = 'native' | 'compat';
+import type { LocaleSetting, SystemLocale } from './i18n.svelte';
+
+/** compat = the Emulator engine, native = the recompiled game, online = Ryujinx Nextendo (Nextendo Network). */
+export type EngineKind = 'native' | 'compat' | 'online';
 export type PackageKind = 'base' | 'update' | 'dlc' | 'unknown';
 
 export interface PackageInfo {
@@ -61,7 +64,10 @@ export interface SystemInfo {
   losslessDll: string | null;
   nativeEngine: boolean;
   compatEngine: boolean;
+  onlineEngine: boolean;
   dataDir: string;
+  /** Desktop language and country, for the "auto" interface language. */
+  locale: SystemLocale;
 }
 
 export interface Candidates {
@@ -156,8 +162,12 @@ export interface Settings {
     upnp: boolean;
   };
   system: {
-    language: 'it' | 'en' | 'fr' | 'de' | 'es' | 'ja';
+    /** The game's language; "auto" follows the interface language. */
+    language: 'auto' | 'it' | 'en' | 'fr' | 'de' | 'es' | 'ja';
     region: 'eur' | 'usa' | 'jpn';
+  };
+  ui: {
+    language: LocaleSetting;
   };
   native: {
     /** Download NVIDIA's DLSS SDK from GitHub during the preparation and build the plugin for this PC (NVIDIA RTX). */
@@ -173,6 +183,11 @@ export interface ComponentsStatus {
   nativeDownloadable: boolean;
   dlssInstalled: boolean;
   dlssVersion: string;
+  onlineVersion: string;
+  onlineEngine: string | null; // folder of Ryujinx Nextendo when downloaded
+  onlineDownloadMb: number;
+  /** A Nextendo Network account is linked in Ryujinx Nextendo (Deluxe8 never reads the account file itself). */
+  nextendoSignedIn: boolean;
   dlssDownloadMb: number;
   dlssLicenseUrl: string;
   dlssBuildable: boolean;
@@ -180,7 +195,7 @@ export interface ComponentsStatus {
 
 export interface ComponentDone {
   ok: boolean;
-  name: 'native' | 'dlss';
+  name: 'native' | 'dlss' | 'online';
   message?: string;
 }
 

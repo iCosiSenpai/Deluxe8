@@ -79,7 +79,9 @@ export const api = {
   cancelPrepare: () => call<void>('cancel_prepare'),
   componentsStatus: () => call<ComponentsStatus>('components_status'),
   /** Progress as `prepare://step` events, the end as `component://done`. */
-  installComponent: (name: 'native' | 'dlss') => call<void>('install_component', { name }),
+  installComponent: (name: 'native' | 'dlss' | 'online') => call<void>('install_component', { name }),
+  /** Opens Ryujinx Nextendo without a game, to sign in to the Nextendo Network (its own window does the login). */
+  openOnlineClient: () => call<void>('open_online_client'),
   launch: (engine: EngineKind, room?: { address: string; port: number; password: string }) =>
     call<void>('launch', { engine, room: room ?? null }),
   stopEngine: () => call<void>('stop_engine'),
@@ -110,9 +112,10 @@ export const demo: URLSearchParams | null =
 let mockSettings: Settings = structuredClone(defaultSettings);
 let mockNative = demo?.get('engine') === 'native';
 let mockDlss = mockNative;
+let mockOnline = demo?.get('online') === '1';
 if (demo) {
-  mockSettings.setupDone = true;
-  mockSettings.paths.dlc = ['D:\\Giochi\\Switch\\Mario Kart 8 Deluxe\\Booster Course Pass.nsp'];
+  mockSettings.setupDone = demo.get('page') !== 'setup'; // ?page=setup&step=3 opens the wizard at a step
+  mockSettings.paths.dlc = ['D:\\Games\\Switch\\Mario Kart 8 Deluxe\\Booster Course Pass.nsp'];
   mockSettings.online.nickname = 'Lupo 8';
   if (mockNative) {
     mockSettings.engine = 'native';
@@ -145,13 +148,15 @@ async function mock(cmd: string, args?: Record<string, unknown>): Promise<unknow
         losslessDll: 'C:\\Steam\\steamapps\\common\\Lossless Scaling\\Lossless.dll',
         nativeEngine: mockNative,
         compatEngine: true,
-        dataDir: 'C:\\Users\\Giocatore\\AppData\\Local\\Deluxe8\\data',
+        onlineEngine: mockOnline,
+        locale: { language: demo?.get('lang') === 'it' ? 'it' : 'en', country: demo?.get('lang') === 'it' ? 'IT' : 'GB' },
+        dataDir: 'C:\\Users\\Player\\AppData\\Local\\Deluxe8\\data',
       } satisfies SystemInfo;
     case 'find_candidates':
       return {
-        gameFolders: ['D:\\Giochi\\Switch\\Mario Kart 8 Deluxe'],
-        keys: ['D:\\Giochi\\Switch\\Chiavi\\prod.keys'],
-        firmware: ['D:\\Giochi\\Switch\\Firmware.22.5.0'],
+        gameFolders: ['D:\\Games\\Switch\\Mario Kart 8 Deluxe'],
+        keys: ['D:\\Games\\Switch\\Keys\\prod.keys'],
+        firmware: ['D:\\Games\\Switch\\Firmware.22.5.0'],
       } satisfies Candidates;
     case 'scan_game_folder': {
       const folder = args!.path as string;
@@ -159,7 +164,7 @@ async function mock(cmd: string, args?: Record<string, unknown>): Promise<unknow
         dv: string | null, size: number, solid: boolean) => ({
         path: `${folder}\\${file}`, fileName: file, container: (file.endsWith('.nsz') ? 'nsz' : 'nsp') as 'nsz' | 'nsp',
         titleId: tid, kind, version, displayVersion: dv, solid, size,
-        note: solid ? 'Compressione solid: verrà convertito in NSP una volta sola' : null,
+        note: solid ? 'Solid compression: converted to NSP once' : null,
       });
       return {
         folder,
@@ -180,10 +185,10 @@ async function mock(cmd: string, args?: Record<string, unknown>): Promise<unknow
       return { path: args!.path as string, ok: true, ncaCount: 248, versionHint: '22.5.0', isZip: false } satisfies FirmwareReport;
     case 'prepare': {
       const steps: PrepareStep[] = [
-        { id: 'keys', label: 'Copia delle chiavi', state: 'pending', detail: null, progress: null },
-        { id: 'firmware', label: 'Installazione del firmware', state: 'pending', detail: null, progress: null },
-        { id: 'base', label: 'Conversione del gioco base in NSP', state: 'pending', detail: null, progress: null },
-        { id: 'config', label: 'Configurazione del motore', state: 'pending', detail: null, progress: null },
+        { id: 'keys', label: 'Copying the keys', state: 'pending', detail: null, progress: null },
+        { id: 'firmware', label: 'Installing the firmware', state: 'pending', detail: null, progress: null },
+        { id: 'base', label: 'Base game to NSP', state: 'pending', detail: null, progress: null },
+        { id: 'config', label: 'Configuring the engine', state: 'pending', detail: null, progress: null },
       ];
       (async () => {
         for (const s of steps) {
@@ -204,7 +209,7 @@ async function mock(cmd: string, args?: Record<string, unknown>): Promise<unknow
     case 'components_status':
       return {
         nativeVersion: '0.2.4',
-        nativeEngine: mockNative ? 'C:\\Users\\Giocatore\\AppData\\Local\\Deluxe8\\data\\engines\\native\\v0.2.4' : null,
+        nativeEngine: mockNative ? 'C:\\Users\\Player\\AppData\\Local\\Deluxe8\\data\\engines\\native\\v0.2.4' : null,
         nativeDownloadMb: 213,
         nativeDownloadable: true,
         dlssInstalled: mockDlss,
@@ -212,19 +217,26 @@ async function mock(cmd: string, args?: Record<string, unknown>): Promise<unknow
         dlssDownloadMb: 73,
         dlssLicenseUrl: 'https://github.com/NVIDIA/DLSS/blob/main/LICENSE.txt',
         dlssBuildable: true,
+        onlineVersion: '1.10.6',
+        onlineEngine: mockOnline ? 'C:\Users\Player\AppData\Local\Deluxe8\data\engines\online\v1.10.6' : null,
+        onlineDownloadMb: 42,
+        nextendoSignedIn: mockOnline,
       } satisfies ComponentsStatus;
     case 'install_component': {
-      const name = args!.name as 'native' | 'dlss';
+      const name = args!.name as 'native' | 'dlss' | 'online';
       const step = name === 'native'
-        ? { id: 'native-engine', label: 'Motore Nativo' }
-        : { id: 'dlss', label: 'NVIDIA DLSS per questo PC' };
+        ? { id: 'native-engine', label: 'Native engine' }
+        : name === 'online'
+          ? { id: 'online-engine', label: 'Ryujinx Nextendo' }
+          : { id: 'dlss', label: 'NVIDIA DLSS for this PC' };
       (async () => {
         for (let p = 0; p <= 1.0001; p += 0.1) {
-          emit('prepare://step', { ...step, state: 'running', detail: `Download da GitHub: ${Math.round(p * 100)}%`, progress: p });
+          emit('prepare://step', { ...step, state: 'running', detail: `Downloading: ${Math.round(p * 100)}%`, progress: p });
           await delay(180);
         }
-        emit('prepare://step', { ...step, state: 'done', detail: 'Pronto', progress: 1 });
+        emit('prepare://step', { ...step, state: 'done', detail: 'Ready', progress: 1 });
         if (name === 'native') mockNative = true;
+        else if (name === 'online') mockOnline = true;
         else mockDlss = true;
         emit('component://done', { ok: true, name });
       })();
@@ -247,25 +259,26 @@ async function mock(cmd: string, args?: Record<string, unknown>): Promise<unknow
       return;
     case 'list_rooms':
       return [
-        { id: '1', name: 'Gran Premio del giovedì', description: 'Solo 150cc, niente oggetti blu', owner: 'Lupo', address: '203.0.113.10', port: 24872, players: 5, maxPlayers: 8, hasPassword: false, game: 'Mario Kart 8 Deluxe', gameVersion: '4.0.1' },
+        { id: '1', name: 'Thursday Grand Prix', description: '150cc only, no blue shells', owner: 'Lupo', address: '203.0.113.10', port: 24872, players: 5, maxPlayers: 8, hasPassword: false, game: 'Mario Kart 8 Deluxe', gameVersion: '4.0.1' },
         { id: '2', name: 'Booster Course Pass tour', description: '', owner: 'Mirtilla', address: '198.51.100.4', port: 24872, players: 2, maxPlayers: 8, hasPassword: true, game: 'Mario Kart 8 Deluxe', gameVersion: '4.0.1' },
-        { id: '3', name: 'Vecchia versione', description: 'Gruppo fermo alla 3.0.4', owner: 'Gigi', address: '192.0.2.77', port: 24872, players: 3, maxPlayers: 8, hasPassword: false, game: 'Mario Kart 8 Deluxe', gameVersion: '3.0.4' },
+        { id: '3', name: 'Old version', description: 'Group still on 3.0.4', owner: 'Gigi', address: '192.0.2.77', port: 24872, players: 3, maxPlayers: 8, hasPassword: false, game: 'Mario Kart 8 Deluxe', gameVersion: '3.0.4' },
       ] satisfies RoomInfo[];
     case 'host_room':
-      return { address: '192.168.1.20', port: 24872, upnp: 'Porta aperta sul router (UPnP)' };
+      return { address: '192.168.1.20', port: 24872, upnp: 'Port opened on the router (UPnP)' };
     case 'room_status':
       return { hosting: false, address: null, port: null };
     case 'list_mods':
       return [
-        { name: 'Kart HD texture', path: 'mods/Kart HD texture', enabled: true, kinds: ['romfs'], size: 812_000_000 },
-        { name: 'Interfaccia in stile classico', path: 'mods/UI', enabled: false, kinds: ['romfs'], size: 24_000_000 },
+        { name: 'Kart HD textures', path: 'mods/Kart HD textures', enabled: true, kinds: ['romfs'], size: 812_000_000 },
+        { name: 'Classic-style menus', path: 'mods/UI', enabled: false, kinds: ['romfs'], size: 24_000_000 },
       ] satisfies ModInfo[];
     case 'mods_folder':
-      return 'C:\\Users\\Giocatore\\AppData\\Local\\Deluxe8\\data\\compat\\load\\0100152000022000';
+      return 'C:\\Users\\Player\\AppData\\Local\\Deluxe8\\data\\compat\\load\\0100152000022000';
+    case 'open_online_client':
     case 'open_folder':
       return;
     case 'read_log':
-      return '[ 0.000] Deluxe8 launcher avviato\n[ 0.120] Motore Compat trovato\n';
+      return '[ 0.000] Deluxe8 launcher started\n[ 0.120] Emulator engine found\n';
     default:
       return;
   }

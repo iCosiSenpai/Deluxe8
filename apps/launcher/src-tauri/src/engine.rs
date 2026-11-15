@@ -60,14 +60,14 @@ fn sync_lossless(paths: &AppPaths, s: &Settings) -> Option<String> {
         return None;
     }
     let Some(src) = crate::system::find_lossless_dll() else {
-        return Some("Frame generation richiesta ma Lossless.dll non trovato: avvio senza".into());
+        return Some(crate::tr!("Frame generation requested but Lossless.dll was not found: starting without it").into());
     };
     let dst = paths.compat_user.join("lossless").join("Lossless.dll");
     let same = std::fs::metadata(&src).ok().map(|m| m.len()) == std::fs::metadata(&dst).ok().map(|m| m.len());
     if !same {
         let _ = std::fs::create_dir_all(dst.parent().unwrap());
         if let Err(e) = std::fs::copy(&src, &dst) {
-            return Some(format!("Lossless.dll non copiato: {e}"));
+            return Some(crate::tr!("Lossless.dll not copied: {e}", e = e));
         }
     }
     None
@@ -132,14 +132,15 @@ pub async fn launch(
     s: Settings,
     room: Option<RoomTarget>,
 ) -> Result<Launched, String> {
-    let manifest = Manifest::load(&paths).ok_or("Il gioco non è ancora preparato: rifai la preparazione")?;
+    let manifest = Manifest::load(&paths).ok_or(crate::tr!("The game is not prepared yet: run the preparation again"))?;
     let mut native_log: Option<PathBuf> = None;
+    let mut online = false;
     let mut cmd = match s.engine {
         EngineKind::Compat => {
-            let exe = paths.compat_engine().ok_or("Motore Compat non trovato")?;
-            eden::write_config(&paths.compat_user, &s).map_err(|e| format!("Configurazione non scritta: {e}"))?;
+            let exe = paths.compat_engine().ok_or(crate::tr!("Emulator engine not found"))?;
+            eden::write_config(&paths.compat_user, &s).map_err(|e| crate::tr!("Configuration not written: {e}", e = e))?;
             crate::mods::sync_split60(&paths, s.controls.split60, manifest.update_version)
-                .map_err(|e| format!("Patch schermo diviso non applicata: {e}"))?;
+                .map_err(|e| crate::tr!("Split-screen patch not applied: {e}", e = e))?;
             if let Some(warning) = sync_lossless(&paths, &s) {
                 logs::write(&warning);
                 let _ = app.emit("engine://log", warning);
@@ -150,7 +151,8 @@ pub async fn launch(
                 .env("DELUXE8_CONTENT_DIRS", &paths.content_updates)
                 .env("DELUXE8_TELEMETRY", "1")
                 .env("DELUXE8_GAME_VERSION", version_name(manifest.update_version))
-                .env("DELUXE8_PLAYERS", s.controls.players.clamp(1, 8).to_string());
+                .env("DELUXE8_PLAYERS", s.controls.players.clamp(1, 8).to_string())
+                .env("DELUXE8_LANGUAGE", crate::i18n::code());
             if let Some(font) = &paths.font {
                 cmd.env("DELUXE8_OVERLAY_FONT", font);
             }
@@ -159,7 +161,7 @@ pub async fn launch(
             }
             if let Some(room) = &room {
                 if !valid_nickname(&s.online.nickname) {
-                    return Err("Nome da pilota non valido (4-20 caratteri: lettere, numeri, spazio, . _ -)".into());
+                    return Err(crate::tr!("Invalid driver name (4-20 characters: letters, digits, space, . _ -)").into());
                 }
                 cmd.arg("-m").arg(multiplayer_arg(&s.online.nickname, room));
             }
@@ -168,11 +170,22 @@ pub async fn launch(
         }
         EngineKind::Native => {
             if room.is_some() {
-                return Err("Le stanze online sono disponibili solo con il motore Compat".into());
+                return Err(crate::tr!("Online rooms are only available with the Emulator engine").into());
             }
             let (cmd, log) = native::command(&paths, &s, &manifest)?;
             native_log = Some(log);
             cmd
+        }
+        EngineKind::Online => {
+            if room.is_some() {
+                return Err(crate::tr!("Online rooms are only available with the Emulator engine").into());
+            }
+            let dir = paths
+                .online_engine_dir()
+                .ok_or(crate::tr!("Ryujinx Nextendo is not on this PC yet: set it up from the Online page"))?;
+            crate::nextendo::prepare(&paths, &manifest)?;
+            online = true;
+            Command::from(crate::nextendo::command(&dir, &paths, &s, Some(&manifest.base)))
         }
     };
     cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).kill_on_drop(true);
@@ -186,7 +199,7 @@ pub async fn launch(
         shown = shown.replace(&multiplayer_arg(&s.online.nickname, room), &multiplayer_arg(&s.online.nickname, &hidden));
     }
     logs::write(&format!("launch {:?}: {shown}", s.engine));
-    let mut child = cmd.spawn().map_err(|e| format!("Avvio del motore fallito: {e}"))?;
+    let mut child = cmd.spawn().map_err(|e| crate::tr!("The engine did not start: {e}", e = e))?;
     let log_file = paths.logs.join("engine.log");
     let _ = std::fs::write(&log_file, "");
     if let Some(out) = child.stdout.take() {
@@ -201,6 +214,10 @@ pub async fn launch(
         tauri::async_runtime::spawn(native::follow_log(app.clone(), log, rx));
         tx
     });
+    if online {
+        let _ = app.emit("engine://event", serde_json::json!({ "t": "hello", "engine": "ryujinx-nextendo" }));
+        let _ = app.emit("engine://event", serde_json::json!({ "t": "running", "program_id": crate::paths::TITLE_ID }));
+    }
     let (kill_tx, kill_rx) = oneshot::channel::<()>();
     let started = std::time::Instant::now();
     tauri::async_runtime::spawn(async move {
@@ -242,11 +259,12 @@ pub async fn launch(
         let message = match code {
             _ if stopped => None, // the player asked for it: not a crash, whatever the exit code
             Some(0) | None => None,
-            Some(6) => Some("Il motore si è fermato: chiavi più vecchie del firmware (codice 6)".to_string()),
-            Some(c) if started.elapsed().as_secs() < 8 => Some(format!(
-                "Il motore si è chiuso subito (codice {c}). Controlla Sistema > Ultimi messaggi del motore."
+            Some(6) => Some(crate::tr!("The engine stopped: the keys are older than the firmware (code 6)").to_string()),
+            Some(c) if started.elapsed().as_secs() < 8 => Some(crate::tr!(
+                "The engine closed right away (code {c}). See System > Latest engine messages.",
+                c = c
             )),
-            Some(c) => Some(format!("Il motore si è chiuso con codice {c}")),
+            Some(c) => Some(crate::tr!("The engine closed with code {c}", c = c)),
         };
         logs::write(&format!("engine exited: {code:?}{}", if stopped { " (stopped)" } else { "" }));
         let _ = app.emit("engine://exit", ExitEvent { code: if stopped { None } else { code }, message });

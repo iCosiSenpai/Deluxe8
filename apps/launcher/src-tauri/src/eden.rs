@@ -203,7 +203,7 @@ pub fn write_config(user_dir: &Path, s: &Settings) -> std::io::Result<()> {
 
     // System: docked (TV) mode is the 1080p target the game is tuned for.
     ini.set("System", "use_docked_mode", 1);
-    ini.set("System", "language_index", language_index(&s.system.language));
+    ini.set("System", "language_index", language_index(s.game_language()));
     ini.set(
         "System",
         "region_index",

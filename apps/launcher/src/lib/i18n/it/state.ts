@@ -1,0 +1,25 @@
+// Italian for state. Keys are the English source text (see i18n.svelte.ts).
+
+export const state: Record<string, string> = {
+  "Play": "Gioca",
+  "Start and summary": "Avvio e riepilogo",
+  "Graphics": "Grafica",
+  "Resolution, upscaling, smoothness": "Risoluzione, upscaling, fluidità",
+  "Controls": "Controlli",
+  "Controllers and shortcuts": "Controller e scorciatoie",
+  "Audio": "Audio",
+  "Volume and output": "Volume e uscita",
+  "Online": "Online",
+  "Online races and rooms": "Gare online e stanze",
+  "Mods": "Mod",
+  "Extra content": "Contenuti aggiuntivi",
+  "System": "Sistema",
+  "Files, language, logs": "File, lingua, log",
+  "Native": "Nativo",
+  "Emulator": "Emulatore",
+  "Settings not saved: {error}": "Impostazioni non salvate: {error}",
+  "The engine closed with code {code}": "Il motore si è chiuso con codice {code}",
+  "Could not start: {error}": "Avvio non riuscito: {error}",
+  "Preparation": "Preparazione",
+  "Loading…": "Caricamento…",
+};

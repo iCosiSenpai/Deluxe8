@@ -34,6 +34,9 @@ pub struct SystemInfo {
     pub lossless_dll: Option<String>,
     pub native_engine: bool,
     pub compat_engine: bool,
+    pub online_engine: bool,
+    /// Desktop language and country, for the "auto" interface language.
+    pub locale: crate::i18n::SystemLocale,
     pub data_dir: String,
 }
 
@@ -264,6 +267,8 @@ pub fn collect(paths: &crate::paths::AppPaths) -> SystemInfo {
         lossless_dll: find_lossless_dll().map(|p| p.to_string_lossy().to_string()),
         native_engine: paths.native_engine_dir().is_some(),
         compat_engine: paths.compat_engine().is_some(),
+        online_engine: paths.online_engine_dir().is_some(),
+        locale: crate::i18n::system_locale(),
         data_dir: paths.data.to_string_lossy().to_string(),
     }
 }

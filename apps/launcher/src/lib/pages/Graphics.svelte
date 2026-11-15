@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from '../i18n.svelte';
   import { onMount } from 'svelte';
   import { api } from '../api';
   import { app } from '../state.svelte';
@@ -25,16 +26,16 @@
     native && (s.image.upscaler === 'dlss' || s.image.upscaler === 'dlaa' || s.smoothness.frameGen === 'dlss'),
   );
 
-  const compatUpscalers: { value: Upscaler; label: string; recommended?: boolean }[] = [
+  const compatUpscalers: { value: Upscaler; label: string; recommended?: boolean }[] = $derived([
     { value: 'fsr1', label: 'FSR 1', recommended: true },
     { value: 'sgsr', label: 'SGSR' },
     { value: 'scaleforce', label: 'ScaleForce' },
     { value: 'lanczos', label: 'Lanczos' },
-    { value: 'bicubic', label: 'Bicubico' },
+    { value: 'bicubic', label: tr('Bicubic') },
     { value: 'area', label: 'Area' },
     { value: 'mmpx', label: 'MMPX' },
-    { value: 'nearest', label: 'Pixel nitidi' },
-  ];
+    { value: 'nearest', label: tr('Sharp pixels') },
+  ]);
   const nativeUpscalers = $derived([
     { value: 'dlss' as Upscaler, label: 'DLSS', disabled: !nvidiaRtx, recommended: nvidiaRtx },
     { value: 'dlaa' as Upscaler, label: 'DLAA', disabled: !nvidiaRtx },
@@ -66,36 +67,37 @@
     if (native && s.smoothness.frameGen === 'lsfg') s.smoothness.frameGen = 'off';
   });
 
+  // English source text, shown through tr
   const upscalerHelp: Record<string, string> = {
-    fsr1: 'Upscaling spaziale di AMD con nitidezza RCAS. Funziona su qualsiasi scheda video, anche NVIDIA.',
-    sgsr: 'Snapdragon Game Super Resolution: spaziale, molto leggero, bordi puliti.',
-    scaleforce: 'Filtro adattivo pensato per l\'emulazione: morbido ma senza aloni.',
-    lanczos: 'Ricampionamento classico, nitido, può creare leggeri aloni.',
-    bicubic: 'Morbido e uniforme.',
-    area: 'Ideale quando la risoluzione interna è più alta dello schermo (supersampling).',
-    mmpx: 'Pensato per la pixel art: qui serve poco.',
-    nearest: 'Nessun filtro: pixel netti, adatto solo a multipli interi.',
-    dlss: 'NVIDIA DLSS Super Resolution con i vettori di movimento reali del gioco; il modello lo sceglie il driver (transformer sulle RTX recenti).',
-    dlaa: 'DLSS alla risoluzione nativa: la migliore anti-aliasing temporale disponibile su RTX.',
-    fsr3: 'AMD FSR 3.1 temporale, open source, funziona anche su NVIDIA e Intel.',
-    fsr4: 'AMD FSR 4, upscaling con machine learning, per le Radeon RX 6000, 7000 e 9000.',
+    fsr1: 'AMD\'s spatial upscaler with RCAS sharpening. Works on any graphics card, NVIDIA included.',
+    sgsr: 'Snapdragon Game Super Resolution: spatial, very light, clean edges.',
+    scaleforce: 'An adaptive filter made for emulation: soft but without halos.',
+    lanczos: 'Classic resampling: sharp, may add light halos.',
+    bicubic: 'Soft and even.',
+    area: 'Best when the internal resolution is higher than the screen (supersampling).',
+    mmpx: 'Made for pixel art: of little use here.',
+    nearest: 'No filtering: hard pixels, for whole multiples only.',
+    dlss: 'NVIDIA DLSS Super Resolution with the game\'s real motion vectors; the driver picks the model (transformer on recent RTX cards).',
+    dlaa: 'DLSS at native resolution: the best temporal anti-aliasing on RTX cards.',
+    fsr3: 'AMD FSR 3.1, temporal and open source; also works on NVIDIA and Intel.',
+    fsr4: 'AMD FSR 4, machine-learning upscaling, for Radeon RX 6000, 7000 and 9000.',
   };
 </script>
 
 <section class="page">
-  <h1 class="display">Grafica</h1>
+  <h1 class="display">{tr('Graphics')}</h1>
   <p class="lead">
     {native
-      ? 'Motore Nativo: il gioco disegna direttamente in Vulkan alla risoluzione che scegli.'
-      : 'Motore Compat: la scena viene renderizzata più grande e poi adattata al tuo schermo.'}
+      ? tr('Native engine: the game draws straight to Vulkan at the resolution you choose.')
+      : tr('Emulator engine: the scene is rendered larger, then fitted to your screen.')}
   </p>
 
-  <h2>Risoluzione</h2>
+  <h2>{tr('Resolution')}</h2>
   <div class="sheet">
     {#if native}
-      <SettingRow label="Risoluzione di uscita" description="L'immagine finale, HUD compreso, sempre nitida." cost={2}>
+      <SettingRow label={tr('Output resolution')} description={tr('The final image, HUD included, always sharp.')} cost={2}>
         <Segmented
-          label="Risoluzione di uscita"
+          label={tr('Output resolution')}
           bind:value={s.display.outputHeight}
           onchange={custom}
           options={[
@@ -107,13 +109,13 @@
         />
       </SettingRow>
       <SettingRow
-        label="Scala della scena"
-        description={renderScales.find((r) => r.value === s.image.renderScale)?.help ?? ''}
+        label={tr('Scene scale')}
+        description={tr(renderScales.find((r) => r.value === s.image.renderScale)?.help ?? '')}
         cost={s.image.renderScale > 120 ? 3 : s.image.renderScale > 90 ? 2 : 1}
         stacked
       >
         <Segmented
-          label="Scala della scena"
+          label={tr('Scene scale')}
           bind:value={s.image.renderScale}
           onchange={custom}
           options={renderScales.map((r) => ({ value: r.value, label: r.label, recommended: r.value === 67 }))}
@@ -121,24 +123,24 @@
       </SettingRow>
     {:else}
       <SettingRow
-        label="Risoluzione interna"
-        description="Multiplo della risoluzione del gioco in modalità TV (1080p). 2x equivale al 4K."
+        label={tr('Internal resolution')}
+        description={tr("A multiple of the game's TV-mode resolution (1080p). 2x equals 4K.")}
         cost={s.image.compatScale >= 7 ? 3 : s.image.compatScale >= 5 ? 2 : 1}
         stacked
       >
         <Segmented
-          label="Risoluzione interna"
+          label={tr('Internal resolution')}
           bind:value={s.image.compatScale}
           onchange={custom}
-          options={compatScales.map((c) => ({ value: c.value, label: c.label, recommended: c.value === 6 }))}
+          options={compatScales.map((c) => ({ value: c.value, label: tr(c.label), recommended: c.value === 6 }))}
         />
       </SettingRow>
     {/if}
   </div>
 
-  <h2>Upscaling e nitidezza</h2>
+  <h2>{tr('Upscaling and sharpness')}</h2>
   <div class="sheet">
-    <SettingRow label="Upscaler" description={upscalerHelp[s.image.upscaler] ?? ''} stacked>
+    <SettingRow label="Upscaler" description={upscalerHelp[s.image.upscaler] ? tr(upscalerHelp[s.image.upscaler]) : ''} stacked>
       <Segmented
         label="Upscaler"
         bind:value={s.image.upscaler}
@@ -147,37 +149,36 @@
       />
     </SettingRow>
     {#if native && !nvidiaRtx}
-      <p class="aside">DLSS e DLAA richiedono una NVIDIA GeForce RTX.</p>
+      <p class="aside">{tr('DLSS and DLAA need an NVIDIA GeForce RTX.')}</p>
     {/if}
     {#if native && nvidiaRtx}
-      <p class="aside">FSR 4 non è disponibile su NVIDIA: AMD lo limita alle Radeon e passa automaticamente a FSR 3.1.</p>
+      <p class="aside">{tr('FSR 4 is not available on NVIDIA: AMD limits it to Radeon cards and falls back to FSR 3.1 by itself.')}</p>
     {/if}
     {#if wantsDlss && !dlssInstalled}
       <p class="aside warn">
-        DLSS non è ancora su questo PC: scaricalo da Sistema &gt; Componenti (o rifai la preparazione). Fino ad allora il gioco
-        usa un altro upscaler.
+        {tr('DLSS is not on this PC yet: download it from System > Components (or prepare the game again). Until then the game uses another upscaler.')}
       </p>
     {/if}
-    <SettingRow label="Nitidezza" description="Contrasto locale applicato dopo l'upscaling." cost={1}>
-      <Slider label="Nitidezza" bind:value={s.image.sharpness} min={0} max={100} step={5} format={(v) => `${v}%`} onchange={custom} />
+    <SettingRow label={tr('Sharpness')} description={tr('Local contrast applied after upscaling.')} cost={1}>
+      <Slider label={tr('Sharpness')} bind:value={s.image.sharpness} min={0} max={100} step={5} format={(v) => `${v}%`} onchange={custom} />
     </SettingRow>
     {#if !native}
-      <SettingRow label="Anti-aliasing" description="SMAA è più preciso, FXAA più leggero." cost={1}>
+      <SettingRow label="Anti-aliasing" description={tr('SMAA is more precise, FXAA lighter.')} cost={1}>
         <Segmented
           label="Anti-aliasing"
           bind:value={s.image.antiAliasing}
           onchange={custom}
           options={[
-            { value: 'none', label: 'Nessuno' },
+            { value: 'none', label: tr('aa|None') },
             { value: 'fxaa', label: 'FXAA' },
             { value: 'smaa', label: 'SMAA', recommended: true },
           ]}
         />
       </SettingRow>
     {/if}
-    <SettingRow label="Filtro anisotropico" description="Texture del tracciato più definite in lontananza." cost={1}>
+    <SettingRow label={tr('Anisotropic filtering')} description={tr('Sharper track textures in the distance.')} cost={1}>
       <Segmented
-        label="Filtro anisotropico"
+        label={tr('Anisotropic filtering')}
         bind:value={s.image.anisotropy}
         onchange={custom}
         options={[
@@ -190,12 +191,12 @@
     </SettingRow>
   </div>
 
-  <h2>Fluidità</h2>
+  <h2>{tr('Smoothness')}</h2>
   <div class="sheet">
     <SettingRow
       label="Frame generation"
-      description="Inserisce fotogrammi intermedi: il gioco resta a 60, lo schermo ne mostra di più. Aggiunge un po' di latenza."
-      tag={s.smoothness.frameGen === 'off' ? null : 'Latenza +'}
+      description={tr('Adds in-between frames: the game stays at 60, the screen shows more. Adds a little latency.')}
+      tag={s.smoothness.frameGen === 'off' ? null : tr('Latency +')}
       tone="giallo"
       stacked
     >
@@ -205,27 +206,26 @@
         onchange={custom}
         options={native
           ? [
-              { value: 'off', label: 'Spenta' },
+              { value: 'off', label: tr('framegen|Off') },
               { value: 'dlss', label: 'DLSS (2x)', disabled: !nvidiaRtx },
               { value: 'fsr3', label: 'FSR 3 (2x)', recommended: !nvidiaRtx },
-              { value: 'builtin', label: 'Integrata' },
+              { value: 'builtin', label: tr('Built-in') },
             ]
           : [
-              { value: 'off', label: 'Spenta' },
+              { value: 'off', label: tr('framegen|Off') },
               { value: 'lsfg', label: 'Lossless Scaling', disabled: !lossless },
             ]}
       />
     </SettingRow>
     {#if !native && !lossless}
       <p class="aside">
-        Per la frame generation in Compat serve Lossless Scaling (Steam): Deluxe8 usa il tuo <code>Lossless.dll</code>
-        senza copiarlo altrove.
+        {tr("Frame generation in the Emulator needs Lossless Scaling (Steam): Deluxe8 uses your own Lossless.dll and keeps it on this PC.")}
       </p>
     {/if}
     {#if s.smoothness.frameGen === 'lsfg' || (native && s.smoothness.frameGen === 'builtin')}
-      <SettingRow label="Moltiplicatore" description="Quanti fotogrammi a schermo per ogni fotogramma del gioco.">
+      <SettingRow label={tr('Multiplier')} description={tr('How many frames on screen for each frame of the game.')}>
         <Segmented
-          label="Moltiplicatore"
+          label={tr('Multiplier')}
           bind:value={s.smoothness.multiplier}
           onchange={custom}
           options={[
@@ -237,17 +237,16 @@
       </SettingRow>
     {/if}
     {#if s.smoothness.frameGen === 'lsfg'}
-      <SettingRow label="Scala del flusso" description="Precisione della stima del movimento. 0 lascia decidere a Deluxe8.">
-        <Slider label="Scala del flusso" bind:value={s.smoothness.flowScale} min={0} max={100} step={5} format={(v) => (v === 0 ? 'Auto' : `${v}%`)} onchange={custom} />
+      <SettingRow label={tr('Flow scale')} description={tr('Precision of the motion estimate. 0 lets Deluxe8 decide.')}>
+        <Slider label={tr('Flow scale')} bind:value={s.smoothness.flowScale} min={0} max={100} step={5} format={(v) => (v === 0 ? 'Auto' : `${v}%`)} onchange={custom} />
       </SettingRow>
     {/if}
     {#if nvidiaRtx}
       <p class="aside">
-        Alternativa senza configurazione: NVIDIA Smooth Motion (RTX 40/50) genera fotogrammi a livello di driver
-        anche per giochi Vulkan. Si attiva dall'app NVIDIA, per programma.
+        {tr('A zero-setup alternative: NVIDIA Smooth Motion (RTX 40/50) generates frames in the driver, Vulkan games included. Turn it on per program in the NVIDIA app.')}
       </p>
     {/if}
-    <SettingRow label="Sincronizzazione verticale" description="FIFO elimina lo strappo; Mailbox riduce la latenza se lo schermo va oltre 60 Hz.">
+    <SettingRow label={tr('Vertical sync')} description={tr('FIFO removes tearing; Mailbox lowers latency on screens above 60 Hz.')}>
       <Segmented
         label="V-Sync"
         bind:value={s.display.vsync}
@@ -255,19 +254,19 @@
         options={[
           { value: 'fifo', label: 'FIFO', recommended: true },
           { value: 'mailbox', label: 'Mailbox' },
-          { value: 'fifo_relaxed', label: 'FIFO rilassato' },
-          { value: 'immediate', label: 'Disattivata' },
+          { value: 'fifo_relaxed', label: tr('Relaxed FIFO') },
+          { value: 'immediate', label: tr('vsync|Off') },
         ]}
       />
     </SettingRow>
-    <SettingRow label="Indicatore prestazioni" description="FPS e tempi del fotogramma in gioco. Si cambia anche dal menu L3 + R3.">
+    <SettingRow label={tr('Performance overlay')} description={tr('FPS and frame times in game. Also changes from the L3 + R3 menu.')}>
       <Segmented
-        label="Indicatore prestazioni"
+        label={tr('Performance overlay')}
         bind:value={s.smoothness.hud}
         options={[
-          { value: 'off', label: 'Spento' },
-          { value: 'compact', label: 'Essenziale' },
-          { value: 'full', label: 'Completo' },
+          { value: 'off', label: tr('Off') },
+          { value: 'compact', label: tr('Essential') },
+          { value: 'full', label: tr('Full') },
         ]}
       />
     </SettingRow>
@@ -276,21 +275,21 @@
   {#if native}
     <h2>HDR</h2>
     <div class="sheet">
-      <SettingRow label="HDR10" description="Richiede lo schermo in modalità HDR. La mappatura dei toni è calcolata dalla scena HDR del gioco.">
+      <SettingRow label="HDR10" description={tr("Needs the screen in HDR mode. Tone mapping comes from the game's own HDR scene.")}>
         <Toggle label="HDR10" bind:checked={s.image.hdr} onchange={custom} />
       </SettingRow>
       {#if s.image.hdr}
-        <SettingRow label="Bianco carta" description="Luminosità di HUD e menu, in nit." stacked>
+        <SettingRow label={tr('Paper white')} description={tr('Brightness of the HUD and menus, in nits.')} stacked>
           <Segmented
-            label="Bianco carta"
+            label={tr('Paper white')}
             bind:value={s.image.hdrPaperWhite}
             onchange={custom}
             options={hdrPaperWhites.map((n) => ({ value: n, label: `${n} nit`, recommended: n === 203 }))}
           />
         </SettingRow>
-        <SettingRow label="Picco" description="Luminosità massima del tuo schermo, in nit." stacked>
+        <SettingRow label={tr('Peak')} description={tr("Your screen's maximum brightness, in nits.")} stacked>
           <Segmented
-            label="Picco"
+            label={tr('Peak')}
             bind:value={s.image.hdrPeak}
             onchange={custom}
             options={hdrPeaks.map((n) => ({ value: n, label: `${n} nit` }))}
@@ -300,70 +299,70 @@
     </div>
   {/if}
 
-  <h2>Schermo</h2>
+  <h2>{tr('Screen')}</h2>
   <div class="sheet">
-    <SettingRow label="Schermo intero" description="Senza bordi sul monitor principale.">
-      <Toggle label="Schermo intero" bind:checked={s.display.fullscreen} />
+    <SettingRow label={tr('Full screen')} description={tr('Borderless on the main monitor.')}>
+      <Toggle label={tr('Full screen')} bind:checked={s.display.fullscreen} />
     </SettingRow>
     {#if !native}
-      <SettingRow label="Formato" description="Il gioco è disegnato in 16:9: gli altri formati lo allungano.">
+      <SettingRow label={tr('Aspect ratio')} description={tr('The game is drawn in 16:9: other ratios stretch it.')}>
         <Segmented
-          label="Formato"
+          label={tr('Aspect ratio')}
           bind:value={s.display.aspect}
           options={[
             { value: '16:9', label: '16:9', recommended: true },
             { value: '16:10', label: '16:10' },
             { value: '21:9', label: '21:9' },
-            { value: 'stretch', label: 'Adatta' },
+            { value: 'stretch', label: tr('Stretch') },
           ]}
         />
       </SettingRow>
     {/if}
   </div>
 
-  <h2>Avanzate</h2>
+  <h2>{tr('Advanced')}</h2>
   <div class="sheet">
     {#if !native}
-      <SettingRow label="Precisione GPU" description="Precisa è l'impostazione di riferimento; Veloce guadagna qualche fotogramma sui PC deboli con rari difetti grafici." cost={s.advanced.gpuAccuracy === 'high' ? 2 : 1}>
+      <SettingRow label={tr('GPU accuracy')} description={tr('Accurate is the reference setting; Fast gains a few frames on slower PCs, with rare glitches.')} cost={s.advanced.gpuAccuracy === 'high' ? 2 : 1}>
         <Segmented
-          label="Precisione GPU"
+          label={tr('GPU accuracy')}
           bind:value={s.advanced.gpuAccuracy}
           onchange={custom}
           options={[
-            { value: 'high', label: 'Precisa', recommended: true },
-            { value: 'normal', label: 'Veloce' },
+            { value: 'high', label: tr('Accurate'), recommended: true },
+            { value: 'normal', label: tr('Fast') },
           ]}
         />
       </SettingRow>
-      <SettingRow label="Shader asincroni" description="Meno scatti la prima volta che compare un effetto, a costo di brevi elementi mancanti.">
-        <Toggle label="Shader asincroni" bind:checked={s.advanced.asyncShaders} onchange={custom} />
+      <SettingRow label={tr('Asynchronous shaders')} description={tr('Fewer stutters the first time an effect shows up, at the cost of briefly missing details.')}>
+        <Toggle label={tr('Asynchronous shaders')} bind:checked={s.advanced.asyncShaders} onchange={custom} />
       </SettingRow>
-      <SettingRow label="Decodifica texture ASTC" description="Sulla GPU è più veloce; sulla CPU in modo asincrono è la più fluida al primo caricamento.">
+      <SettingRow label={tr('ASTC texture decoding')} description={tr('Fastest on the GPU; asynchronous on the CPU is the smoothest on first load.')}>
         <Segmented
-          label="Decodifica ASTC"
+          label={tr('ASTC texture decoding')}
           bind:value={s.advanced.astcDecode}
           onchange={custom}
           options={[
             { value: 'gpu', label: 'GPU', recommended: true },
-            { value: 'async', label: 'CPU asincrona' },
+            { value: 'async', label: tr('Asynchronous CPU') },
             { value: 'cpu', label: 'CPU' },
           ]}
         />
       </SettingRow>
-      <SettingRow label="Uso della VRAM" description="Aggressivo tiene più dati in memoria video: meno caricamenti, più VRAM occupata.">
+      <SettingRow label={tr('VRAM use')} description={tr('Aggressive keeps more in video memory: fewer loads, more VRAM in use.')}>
         <Segmented
-          label="Uso della VRAM"
+          label={tr('VRAM use')}
           bind:value={s.advanced.vramMode}
           onchange={custom}
           options={[
-            { value: 'conservative', label: 'Conservativo' },
-            { value: 'aggressive', label: 'Aggressivo', recommended: (gpu?.vramMb ?? 0) >= 8000 },
+            { value: 'conservative', label: tr('Conservative') },
+            { value: 'aggressive', label: tr('Aggressive'), recommended: (gpu?.vramMb ?? 0) >= 8000 },
           ]}
         />
       </SettingRow>
     {/if}
-    <SettingRow label="Cache degli shader su disco" description="Conserva gli shader compilati: dalla seconda partita niente scatti.">
-      <Toggle label="Cache degli shader" bind:checked={s.advanced.diskShaderCache} />
+    <SettingRow label={tr('Shader cache on disk')} description={tr('Keeps compiled shaders: no stutters from the second race on.')}>
+      <Toggle label={tr('Shader cache on disk')} bind:checked={s.advanced.diskShaderCache} />
     </SettingRow>
   </div>
 </section>
@@ -401,12 +400,5 @@
   }
   .aside.warn {
     color: var(--giallo);
-  }
-  code {
-    font-family: inherit;
-    font-stretch: 85%;
-    background: var(--pannello-2);
-    padding: 0 5px;
-    border-radius: 3px;
   }
 </style>
