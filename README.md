@@ -118,7 +118,8 @@
 ## 🚀 Quick start
 
 1. **Download** the latest installer from [Releases](https://github.com/iCosiSenpai/Deluxe8/releases) (Windows,
-   per-user install, no administrator rights) and check it against `SHA256SUMS.txt`.
+   per-user install, no administrator rights) and check it against `SHA256SUMS.txt`. Linux: the experimental `.deb`
+   (Ubuntu 26.04) or AppImage, when the release has one.
 2. **Dump your own files** from your console: the game and its update as NSP or NSZ, `prod.keys` (and `title.keys`),
    and the firmware as a folder of `.nca` files or a `.zip`.
 3. **Run Deluxe8.** The setup wizard finds files that other emulators on your PC already know about, checks everything

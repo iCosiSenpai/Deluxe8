@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "linux": {
+      "appimage": {
+        "files": {
+          "/usr/bin/deluxe8-engine": "../../../out/engine/linux-x64/deluxe8-engine",
+          "/usr/bin/deluxe8-room": "../../../out/engine/linux-x64/deluxe8-room",
+          "/usr/share/licenses/deluxe8/LICENSE-eden.txt": "../../../out/engine/linux-x64/LICENSE-eden.txt"
+        }
+      }
+    }
+  }
+}

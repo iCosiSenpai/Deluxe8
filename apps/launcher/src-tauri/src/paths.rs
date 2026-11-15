@@ -124,6 +124,8 @@ impl AppPaths {
         if let Some(repo) = &repo {
             compat_candidates.push(repo.join("out").join("engine").join(platform_dir()));
         }
+        // the Linux AppImage keeps the engine next to the launcher (usr/bin), where linuxdeploy bundles its libraries
+        compat_candidates.extend(exe.clone());
 
         let mut font_candidates = Vec::new();
         let mut dlss_candidates = Vec::new();

@@ -120,7 +120,7 @@ jobs:
     runs-on: ubuntu-24.04
     container: ubuntu:26.04
     timeout-minutes: 300
-    continue-on-error: true   # experimental: the full Linux build has not been validated yet
+    continue-on-error: true   # experimental packages: a Linux failure must not hold the Windows release
     env:
       APPIMAGE_EXTRACT_AND_RUN: '1'
       DEBIAN_FRONTEND: noninteractive
@@ -128,7 +128,8 @@ jobs:
       - name: Packages (Eden from docs/BUILDING.md, Tauri)
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends ca-certificates curl git file xz-utils patch unzip xdg-utils \
+          # dpkg-dev: dpkg-shlibdeps (engine libraries for the .deb) and dpkg-architecture (linuxdeploy's GTK plugin)
+          apt-get install -y --no-install-recommends ca-certificates curl git file xz-utils patch unzip xdg-utils dpkg-dev \
             autoconf cmake g++ gcc clang glslang-tools libglu1-mesa-dev libhidapi-dev libpulse-dev libtool libudev-dev \
             libxext-dev mesa-common-dev nasm ninja-build catch2 liblz4-dev libzstd-dev libssl-dev libavfilter-dev \
             libavcodec-dev libswscale-dev pkg-config zlib1g-dev libva-dev libvdpau-dev libvulkan-dev spirv-tools \
@@ -140,6 +141,19 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           bash tools/engine.sh all
+      - name: Engine libraries for the .deb
+        shell: bash
+        run: |
+          # Tauri declares only the launcher's own libraries: dpkg-shlibdeps names the packages the engine needs
+          mkdir -p "$RUNNER_TEMP/shlibs/debian"
+          printf 'Source: deluxe8\n\nPackage: deluxe8\nArchitecture: any\n' > "$RUNNER_TEMP/shlibs/debian/control"
+          engine="$GITHUB_WORKSPACE/out/engine/linux-x64"
+          deps=$(cd "$RUNNER_TEMP/shlibs" && dpkg-shlibdeps -O "$engine/deluxe8-engine" "$engine/deluxe8-room" | sed -n 's/^shlibs:Depends=//p')
+          [ -n "$deps" ] || { echo '::error::dpkg-shlibdeps listed no packages'; exit 1; }
+          node -e 'const [deps, out] = process.argv.slice(1);
+            require("fs").writeFileSync(out, JSON.stringify({ bundle: { linux: { deb: { depends: deps.split(", ") } } } }, null, 2));' \
+            "$deps" "$RUNNER_TEMP/deb-depends.json"
+          cat "$RUNNER_TEMP/deb-depends.json"
       - uses: dtolnay/rust-toolchain@stable
       - name: Launcher packages
         working-directory: apps/launcher
@@ -148,9 +162,10 @@ jobs:
         run: |
           npm install -g pnpm@10
           pnpm install --frozen-lockfile
-          pnpm tauri build --bundles deb --config src-tauri/tauri.bundle-linux.conf.json
-          # the AppImage (linuxdeploy) is best effort: when it fails, its output is in the log and the .deb still ships
-          pnpm tauri bundle --bundles appimage --verbose --config src-tauri/tauri.bundle-linux.conf.json ||
+          pnpm tauri build --bundles deb --config src-tauri/tauri.bundle-linux.conf.json --config "$RUNNER_TEMP/deb-depends.json"
+          # AppImage: the engine sits next to the launcher in usr/bin, where linuxdeploy also bundles its libraries.
+          # Best effort: when it fails, linuxdeploy's output is in the log and the .deb still ships.
+          pnpm tauri bundle --bundles appimage --verbose --config src-tauri/tauri.bundle-appimage.conf.json ||
             echo '::warning::AppImage bundling failed: shipping the .deb only (linuxdeploy output above)'
       - name: Collect
         shell: bash

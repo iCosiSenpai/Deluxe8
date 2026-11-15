@@ -1,7 +1,8 @@
 # Releasing and code signing
 
-A release is the Windows installer (`Deluxe8_<version>_x64-setup.exe`, Compat engine included) plus `SHA256SUMS.txt`, and,
-once validated, the Linux AppImage and deb. The Native engine and DLSS are not part of a release: the launcher downloads
+A release is the Windows installer (`Deluxe8_<version>_x64-setup.exe`, Compat engine included) plus `SHA256SUMS.txt`, and
+the experimental Linux packages (a .deb that declares the engine's libraries and, when linuxdeploy succeeds, an AppImage
+that carries them; see [BUILDING.md](BUILDING.md#linux-x86-64)). The Native engine and DLSS are not part of a release: the launcher downloads
 them on the player's PC (pinned and verified, see [ARCHITECTURE.md](ARCHITECTURE.md#components-downloaded-by-the-launcher)).
 
 ## Two ways to build one

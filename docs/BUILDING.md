@@ -40,8 +40,9 @@ The Eden tree is `.cache/engine/eden` on branch `deluxe8`; `src/deluxe8` there i
 ## Linux (x86-64)
 
 `tools/engine.sh` mirrors `tools/engine.ps1` (`toolchain`, `fetch`, `patch`, `configure`, `build`, `stage`, `all`,
-`export-patches`, `clean`) and stages `deluxe8-engine` / `deluxe8-room` into `out/engine/linux-x64`. Status: the
-`toolchain` check passes on Ubuntu 26.04 (Clang 21, CMake 4.2, Ninja 1.13); a complete Linux build has not been run yet.
+`export-patches`, `clean`) and stages `deluxe8-engine` / `deluxe8-room` into `out/engine/linux-x64`. It prefers Clang
+(Eden needs Clang 19+ or GCC 16+, and Ubuntu 26.04 ships GCC 15). The release workflow runs the complete build, engine
+and launcher packages, in an Ubuntu 26.04 container (Clang 21, CMake 4.2).
 
 Packages on Ubuntu 26.04 / Debian 13 (from Eden's `docs/Deps.md`, without the Qt ones):
 
@@ -54,10 +55,19 @@ sudo apt-get install autoconf cmake g++ gcc clang git patch glslang-tools libglu
 tools/engine.sh all
 ```
 
-Launcher: `cd apps/launcher && pnpm install && pnpm tauri build --config src-tauri/tauri.bundle-linux.conf.json` (needs
-`libwebkit2gtk-4.1-dev`). Do not run
-`tools/engine.sh patch` from WSL on a tree that a Windows build also uses: it replaces the `src/deluxe8` junction with a
-symlink and resets the branch.
+Launcher packages, as [`release.yml`](../.github/workflows/release.yml) builds them (they need `libwebkit2gtk-4.1-dev`,
+`librsvg2-dev` and `dpkg-dev`), from `apps/launcher` after `pnpm install`:
+
+- **.deb**: `pnpm tauri build --bundles deb --config src-tauri/tauri.bundle-linux.conf.json --config deb-depends.json`.
+  Tauri declares only the launcher's own libraries, so the workflow writes `deb-depends.json` from what `dpkg-shlibdeps`
+  says the engine needs (SDL3, FFmpeg, Boost, libusb...).
+- **AppImage**: `NO_STRIP=true pnpm tauri bundle --bundles appimage --config src-tauri/tauri.bundle-appimage.conf.json`.
+  The engine goes next to the launcher in `usr/bin` (the launcher looks there last), where linuxdeploy also bundles its
+  libraries.
+
+Both are experimental: they are built against Ubuntu 26.04's libraries (the .deb installs only there and on its
+derivatives) and have not been tried on a Linux desktop yet. Do not run `tools/engine.sh patch` from WSL on a tree that
+a Windows build also uses: it replaces the `src/deluxe8` junction with a symlink and resets the branch.
 
 The Native engine on Linux is Racing 8 DX Recomp's AppImage; the launcher does not download it on Linux yet.
 

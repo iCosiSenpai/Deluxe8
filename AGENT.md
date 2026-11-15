@@ -47,7 +47,7 @@ Update `TASKS.md` and `LOG.md` as you work. Verify claims from research (they ma
 AGENT.md  README.md  LICENSE  .gitignore  .gitattributes  .claude/ (CLAUDE.md -> AGENT.md, launch.json)
 .github/              CI (ci.yml), release builds (release.yml), issue/PR templates, CONTRIBUTING, SECURITY, dependabot
 apps/launcher/        Tauri 2 launcher (pnpm); src-tauri/resources/dlss-plugin = DLSS plugin sources built on the PC;
-                      src-tauri/tauri.bundle-{windows,linux}.conf.json = release bundles with the Compat engine
+                      src-tauri/tauri.bundle-{windows,linux,appimage}.conf.json = release bundles with the Compat engine
 crates/nx/            d8-nx Rust crate + `d8-nx` CLI
 engine/               upstream.json, patches/, src/deluxe8/
 tools/                engine.ps1 (+ engine.sh), native.ps1, release.ps1 (signed local release), brand.py (logo/banner)
