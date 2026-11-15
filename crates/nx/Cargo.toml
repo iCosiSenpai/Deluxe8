@@ -15,13 +15,13 @@ name = "d8-nx"
 path = "src/bin/d8-nx.rs"
 
 [dependencies]
-zstd = "0.13"
-aes = "0.8"
-ctr = "0.9"
-sha2 = "0.10"
+zstd = "0.14"
+aes = "0.9"
+ctr = "0.10"
+sha2 = "0.11"
 hex = "0.4"
-roxmltree = "0.20"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+roxmltree = "0.21"
+zip = { version = "9", default-features = false, features = ["deflate"] }
 thiserror = "2"
 anyhow = "1"
 ctrlc = "3"
