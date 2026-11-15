@@ -100,7 +100,12 @@ configure() {
 
 build() {
     step "Build"
-    cmake --build "$BUILD_DIR" --config "$CONFIG"
+    if [ -n "${CI:-}" ]; then
+        # CI: keep going after a failed file, so one run reports every compile error
+        cmake --build "$BUILD_DIR" --config "$CONFIG" -- -k 0
+    else
+        cmake --build "$BUILD_DIR" --config "$CONFIG"
+    fi
 }
 
 stage() {
