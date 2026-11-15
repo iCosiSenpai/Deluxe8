@@ -1,0 +1,55 @@
+name: Bug report
+description: Something does not work in the launcher or one of the engines.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. **Never attach or paste keys, firmware, game files or saves**, and do not ask where to get
+        them: such issues are closed. Logs are fine: *Sistema → Apri i log* opens the folder.
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Engine
+      options: [Compat, Native, Launcher only (setup, settings, downloads)]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Deluxe8 version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      placeholder: Steps to reproduce, what you saw, what should have happened.
+    validations:
+      required: true
+  - type: textarea
+    id: system
+    attributes:
+      label: System
+      description: Sistema in the launcher lists these. Include the GPU driver version.
+      placeholder: |
+        OS: Windows 11 24H2
+        CPU / RAM:
+        GPU / driver:
+        Game: update 4.0.1, Booster Course Pass yes/no
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The end of launcher.log and engine.log (they contain paths, never key values).
+      render: text
+  - type: checkboxes
+    id: own
+    attributes:
+      label: Your own copy
+      options:
+        - label: I play my own copy, dumped from my own console, and attached no Nintendo material.
+          required: true

@@ -1,0 +1,42 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Deluxe8 <build@deluxe8.invalid>
+Date: Sat, 14 Nov 2026 21:18:55 +0100
+Subject: [PATCH] deluxe8: DELUXE8_USER_DIR overrides the data directory
+
+The Deluxe8 launcher keeps saves, keys, firmware, caches and config of the engine in its
+own folder and passes it through this environment variable (desktop platforms only).
+---
+ src/common/fs/path_util.cpp | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/src/common/fs/path_util.cpp b/src/common/fs/path_util.cpp
+index f040e84..c854e39 100644
+--- a/src/common/fs/path_util.cpp
++++ b/src/common/fs/path_util.cpp
+@@ -6,6 +6,7 @@
+ 
+ #include <algorithm>
+ #include <cctype>
++#include <cstdlib>
+ #include <iostream>
+ #include <sstream>
+ #include "common/container/unordered_map.h"
+@@ -149,6 +150,18 @@ public:
+         LEGACY_PATH(Yuzu, YUZU)
+         LEGACY_PATH(Suyu, SUYU)
+ #undef LEGACY_PATH
++#endif
++#ifndef __ANDROID__
++        // Deluxe8: the launcher owns the data directory and passes it explicitly.
++#ifdef _WIN32
++        if (const wchar_t* d8_dir = _wgetenv(L"DELUXE8_USER_DIR"); d8_dir && *d8_dir) {
++#else
++        if (const char* d8_dir = std::getenv("DELUXE8_USER_DIR"); d8_dir && *d8_dir) {
++#endif
++            eden_path = fs::path{d8_dir};
++            eden_path_cache = eden_path / CACHE_DIR;
++            eden_path_config = eden_path / CONFIG_DIR;
++        }
+ #endif
+         // data
+         GenerateEdenPath(EdenPath::EdenDir, eden_path);

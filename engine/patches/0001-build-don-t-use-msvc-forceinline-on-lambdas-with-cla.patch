@@ -1,0 +1,39 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Deluxe8 <build@deluxe8.invalid>
+Date: Sat, 14 Nov 2026 21:08:52 +0100
+Subject: [PATCH] build: don't use [[msvc::forceinline]] on lambdas with
+ clang-cl
+
+Clang 23 rejects the MSVC lambda attribute ('cannot be applied to types').
+Only real MSVC understands it, so guard it with !defined(__clang__).
+---
+ src/video_core/renderer_opengl/gl_graphics_pipeline.cpp | 2 +-
+ src/video_core/renderer_vulkan/vk_graphics_pipeline.cpp | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/video_core/renderer_opengl/gl_graphics_pipeline.cpp b/src/video_core/renderer_opengl/gl_graphics_pipeline.cpp
+index 73ca538..9cbab8d 100644
+--- a/src/video_core/renderer_opengl/gl_graphics_pipeline.cpp
++++ b/src/video_core/renderer_opengl/gl_graphics_pipeline.cpp
+@@ -20,7 +20,7 @@
+ #include "video_core/shader_notify.h"
+ #include "video_core/texture_cache/texture_cache.h"
+ 
+-#if defined(_MSC_VER) && defined(NDEBUG)
++#if defined(_MSC_VER) && !defined(__clang__) && defined(NDEBUG)
+ #define LAMBDA_FORCEINLINE [[msvc::forceinline]]
+ #else
+ #define LAMBDA_FORCEINLINE
+diff --git a/src/video_core/renderer_vulkan/vk_graphics_pipeline.cpp b/src/video_core/renderer_vulkan/vk_graphics_pipeline.cpp
+index 448f9a3..b39e2aa 100644
+--- a/src/video_core/renderer_vulkan/vk_graphics_pipeline.cpp
++++ b/src/video_core/renderer_vulkan/vk_graphics_pipeline.cpp
+@@ -30,7 +30,7 @@
+ #include "video_core/gpu_logging/gpu_logging.h"
+ #include "common/settings.h"
+ 
+-#if defined(_MSC_VER) && defined(NDEBUG)
++#if defined(_MSC_VER) && !defined(__clang__) && defined(NDEBUG)
+ #define LAMBDA_FORCEINLINE [[msvc::forceinline]]
+ #else
+ #define LAMBDA_FORCEINLINE

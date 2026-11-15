@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /apps/launcher/src-tauri
+    schedule:
+      interval: monthly
+    groups:
+      rust:
+        patterns: ['*']
+  - package-ecosystem: cargo
+    directory: /crates/nx
+    schedule:
+      interval: monthly
+    groups:
+      rust:
+        patterns: ['*']
+  - package-ecosystem: npm
+    directory: /apps/launcher
+    schedule:
+      interval: monthly
+    groups:
+      ui:
+        patterns: ['*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

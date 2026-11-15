@@ -1,0 +1,77 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Deluxe8",
+  "version": "0.1.0",
+  "identifier": "dev.deluxe8.launcher",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Deluxe8",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1024,
+        "minHeight": 640,
+        "decorations": false,
+        "backgroundColor": "#161b26",
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis",
+      "appimage",
+      "deb"
+    ],
+    "category": "Game",
+    "publisher": "Deluxe8",
+    "copyright": "Copyright (C) 2026 Deluxe8 contributors. GPL-3.0-or-later.",
+    "homepage": "https://github.com/iCosiSenpai/Deluxe8",
+    "shortDescription": "Tailored PC runtime for your own copy of Mario Kart 8 Deluxe",
+    "licenseFile": "../../../LICENSE",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "../src/assets/fonts/Archivo-Variable.ttf": "fonts/Archivo-Variable.ttf",
+      "../src/assets/fonts/OFL.txt": "fonts/OFL.txt",
+      "resources/dlss-plugin/kr_upscaler_dlss.cpp": "dlss-plugin/kr_upscaler_dlss.cpp",
+      "resources/dlss-plugin/kr_upscaler_abi.h": "dlss-plugin/kr_upscaler_abi.h",
+      "resources/dlss-plugin/msvc_shim.cpp": "dlss-plugin/msvc_shim.cpp",
+      "resources/dlss-plugin/forwarder.c": "dlss-plugin/forwarder.c",
+      "resources/dlss-plugin/README.md": "dlss-plugin/README.md"
+    },
+    "longDescription": "Deluxe8 sets up and runs your own copy of Mario Kart 8 Deluxe on PC: a tuned emulation engine with online rooms, or a native recompiled engine with DLSS, FSR 3.1, frame generation and HDR. No game files are included.",
+    "windows": {
+      "digestAlgorithm": "sha256",
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "Italian",
+          "English"
+        ],
+        "displayLanguageSelector": false
+      }
+    },
+    "linux": {
+      "deb": {
+        "section": "games"
+      }
+    }
+  }
+}

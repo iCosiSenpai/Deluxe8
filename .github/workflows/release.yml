@@ -1,0 +1,178 @@
+# Release builds. A tag `v*` builds the Windows installer (Compat engine included), signs it when signing is configured,
+# writes SHA256SUMS.txt, attests build provenance (public repository) and opens a DRAFT release to review and publish by
+# hand. Signing: see docs/RELEASING.md (repository variables AZURE_SIGNING_*, secrets AZURE_*).
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      linux:
+        description: Also try the Linux packages (experimental, Ubuntu 26.04 container)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 300
+    permissions:
+      contents: read
+      id-token: write       # build provenance
+      attestations: write
+    env:
+      SIGNING: ${{ vars.AZURE_SIGNING_ACCOUNT != '' && 'azure' || 'none' }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      SIGN_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+      SIGN_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+      SIGN_PROFILE: ${{ vars.AZURE_SIGNING_PROFILE }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/cache@v6
+        with:
+          path: .cache/toolchain
+          key: toolchain-windows-${{ hashFiles('tools/engine.ps1') }}
+
+      - name: Compat engine (Eden + patches)
+        shell: pwsh
+        run: ./tools/engine.ps1 all
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/launcher/src-tauri
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/launcher/pnpm-lock.yaml
+      - name: UI dependencies
+        working-directory: apps/launcher
+        run: pnpm install --frozen-lockfile
+
+      - name: Signing tool (Azure Artifact Signing)
+        if: env.SIGNING == 'azure'
+        run: cargo install artifact-signing-cli --version 0.12.0 --locked
+
+      - name: Sign the engine executables
+        if: env.SIGNING == 'azure'
+        shell: pwsh
+        run: |
+          artifact-signing-cli -e $env:SIGN_ENDPOINT -a $env:SIGN_ACCOUNT -c $env:SIGN_PROFILE `
+            out/engine/win-x64/deluxe8-engine.exe out/engine/win-x64/deluxe8-room.exe
+          if ($LASTEXITCODE -ne 0) { throw 'engine signing failed' }
+
+      - name: Launcher and installer
+        shell: pwsh
+        working-directory: apps/launcher
+        run: |
+          $cli = @('tauri', 'build', '--bundles', 'nsis', '--config', 'src-tauri/tauri.bundle-windows.conf.json')
+          if ($env:SIGNING -eq 'azure') {
+            # Tauri signs the launcher executable, the uninstaller and the installer with this command (%1 = the file)
+            $sign = "artifact-signing-cli -e $env:SIGN_ENDPOINT -a $env:SIGN_ACCOUNT -c $env:SIGN_PROFILE %1"
+            $cli += @('--config', (@{ bundle = @{ windows = @{ signCommand = $sign } } } | ConvertTo-Json -Depth 5 -Compress))
+          }
+          pnpm @cli
+          if ($LASTEXITCODE -ne 0) { throw 'tauri build failed' }
+
+      - name: Collect, check signatures, checksums
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out/release | Out-Null
+          Copy-Item apps/launcher/src-tauri/target/release/bundle/nsis/*.exe out/release/
+          if ($env:SIGNING -ne 'none') {
+            $files = @(Get-ChildItem out/release/*.exe) + @(Get-Item out/engine/win-x64/*.exe, apps/launcher/src-tauri/target/release/Deluxe8.exe)
+            foreach ($f in $files) {
+              $s = Get-AuthenticodeSignature $f.FullName
+              "{0}: {1} ({2})" -f $f.Name, $s.Status, $s.SignerCertificate.Subject
+              if ($s.Status -ne 'Valid') { throw "$($f.Name) is not validly signed" }
+            }
+          } else {
+            Write-Host '::warning::Unsigned build: configure signing (docs/RELEASING.md) to avoid SmartScreen warnings.'
+          }
+          Get-ChildItem out/release -File | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } |
+            Set-Content -Encoding ascii out/release/SHA256SUMS-windows.txt
+          Get-Content out/release/SHA256SUMS-windows.txt
+
+      - uses: actions/attest-build-provenance@v4
+        if: ${{ !github.event.repository.private }}
+        with:
+          subject-path: out/release/*.exe
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: deluxe8-windows
+          path: out/release/*
+          if-no-files-found: error
+
+  linux:
+    if: github.event_name == 'workflow_dispatch' && inputs.linux
+    runs-on: ubuntu-24.04
+    container: ubuntu:26.04
+    timeout-minutes: 300
+    continue-on-error: true   # experimental: the full Linux build has not been validated yet
+    env:
+      APPIMAGE_EXTRACT_AND_RUN: '1'
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Packages (Eden from docs/BUILDING.md, Tauri)
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl git file xz-utils \
+            autoconf cmake g++ gcc clang glslang-tools libglu1-mesa-dev libhidapi-dev libpulse-dev libtool libudev-dev \
+            libxext-dev mesa-common-dev nasm ninja-build catch2 liblz4-dev libzstd-dev libssl-dev libavfilter-dev \
+            libavcodec-dev libswscale-dev pkg-config zlib1g-dev libva-dev libvdpau-dev libvulkan-dev spirv-tools \
+            spirv-headers libusb-1.0-0-dev libxbyak-dev libboost-dev libboost-fiber-dev libboost-context-dev libsdl3-dev \
+            libopus-dev libasound2t64 vulkan-utility-libraries-dev \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf nodejs npm
+      - uses: actions/checkout@v7
+      - name: Compat engine
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          bash tools/engine.sh all
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Launcher packages
+        working-directory: apps/launcher
+        run: |
+          npm install -g pnpm@10
+          pnpm install --frozen-lockfile
+          pnpm tauri build --bundles appimage,deb --config src-tauri/tauri.bundle-linux.conf.json
+      - name: Collect
+        run: |
+          mkdir -p out/release
+          cp apps/launcher/src-tauri/target/release/bundle/appimage/*.AppImage apps/launcher/src-tauri/target/release/bundle/deb/*.deb out/release/
+          (cd out/release && sha256sum * > SHA256SUMS-linux.txt && cat SHA256SUMS-linux.txt)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: deluxe8-linux
+          path: out/release/*
+
+  draft:
+    needs: [windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          cat SHA256SUMS-*.txt > SHA256SUMS.txt && rm SHA256SUMS-*.txt
+          gh release create "$GITHUB_REF_NAME" * --repo "$GITHUB_REPOSITORY" --draft --generate-notes \
+            --title "Deluxe8 $GITHUB_REF_NAME"

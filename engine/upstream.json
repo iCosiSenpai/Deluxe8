@@ -1,0 +1,8 @@
+{
+  "name": "eden",
+  "description": "Eden Switch emulator (yuzu/sudachi lineage), GPL-3.0-or-later. Deluxe8 builds a tailored single-game engine from this exact revision plus engine/patches.",
+  "url": "https://git.eden-emu.dev/eden-emu/eden.git",
+  "commit": "6828dc59dc3dcc550c9f67675d4bcacae454f12b",
+  "commit_date": "2026-11-14",
+  "license": "GPL-3.0-or-later"
+}

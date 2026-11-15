@@ -1,0 +1,92 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Deluxe8 <build@deluxe8.invalid>
+Date: Sun, 15 Nov 2026 01:22:03 +0100
+Subject: [PATCH] deluxe8: register the booted container's contents in eden-cli
+
+The Qt frontend registers every file it boots with the manual content
+provider; eden-cli did not, so RomFSFactory::OpenCurrentProcess found no
+base program NCA. An update from an external content directory then
+patched the ExeFS but not the RomFS, and the update's code ran on the
+base game's data: Mario Kart 8 Deluxe 4.0.1 on the 1.0.0 RomFS (4669 of
+6597 files) looped on null reads right after boot.
+
+Register the NCAs of the NSP/XCI given on the command line in the
+FrontendManual slot, like QtCommon::Content does.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/yuzu_cmd/yuzu.cpp | 44 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 44 insertions(+)
+
+diff --git a/src/yuzu_cmd/yuzu.cpp b/src/yuzu_cmd/yuzu.cpp
+index d8956bb..08f2f71 100644
+--- a/src/yuzu_cmd/yuzu.cpp
++++ b/src/yuzu_cmd/yuzu.cpp
+@@ -27,7 +27,10 @@
+ #include "core/core_timing.h"
+ #include "core/cpu_manager.h"
+ #include "core/crypto/key_manager.h"
++#include "core/file_sys/card_image.h"
++#include "core/file_sys/content_archive.h"
+ #include "core/file_sys/registered_cache.h"
++#include "core/file_sys/submission_package.h"
+ #include "core/file_sys/vfs/vfs_real.h"
+ #include "core/hle/service/am/applet_manager.h"
+ #include "core/hle/service/filesystem/filesystem.h"
+@@ -169,8 +172,48 @@ struct SdlState {
+     Core::System system{};
+     InputCommon::InputSubsystem input_subsystem{};
+     std::unique_ptr<EmuWindow_SDL3> emu_window;
++    // Contents of the container given on the command line (see RegisterBootedContainer).
++    std::unique_ptr<FileSys::ManualContentProvider> booted_contents;
+ };
+ 
++// The Qt frontend registers every file it boots (game list scan, or "load file") with the manual content provider.
++// The command-line frontend did not, so RomFSFactory::OpenCurrentProcess found no base program NCA: an update from
++// an external content directory then patched the ExeFS but not the RomFS, and the update's code ran on the base
++// game's data (MK8D 4.0.1 on the 1.0.0 RomFS: endless null reads at boot). Register the booted NSP/XCI the same way.
++static void RegisterBootedContainer(SdlState& state, const std::string& path) {
++    const auto file = state.system.GetFilesystem()->OpenFile(path, FileSys::OpenMode::Read);
++    if (!file) {
++        return;
++    }
++    std::shared_ptr<FileSys::NSP> nsp;
++    switch (Loader::IdentifyFile(file)) {
++    case Loader::FileType::NSP:
++    case Loader::FileType::NSZ:
++        nsp = std::make_shared<FileSys::NSP>(file);
++        break;
++    case Loader::FileType::XCI:
++    case Loader::FileType::XCZ:
++        nsp = FileSys::XCI{file}.GetSecurePartitionNSP();
++        break;
++    default:
++        return; // NCA / NSO / directories need no registration
++    }
++    if (!nsp || nsp->GetStatus() != Loader::ResultStatus::Success) {
++        return;
++    }
++    state.booted_contents = std::make_unique<FileSys::ManualContentProvider>();
++    std::size_t count = 0;
++    for (const auto& [title_id, entries] : nsp->GetNCAs()) {
++        for (const auto& [key, nca] : entries) {
++            state.booted_contents->AddEntry(key.first, key.second, title_id, nca->GetBaseFile());
++            ++count;
++        }
++    }
++    state.system.RegisterContentProvider(FileSys::ContentProviderUnionSlot::FrontendManual,
++                                         state.booted_contents.get());
++    LOG_INFO(Frontend, "Registered {} contents of the booted container", count);
++}
++
+ extern "C" SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
+     SdlState* state = new SdlState();
+     *appstate = state;
+@@ -250,6 +293,7 @@ extern "C" SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
+     state->system.SetFilesystem(std::make_shared<FileSys::RealVfsFilesystem>());
+     state->system.GetFileSystemController().CreateFactories(*state->system.GetFilesystem());
+     state->system.GetUserChannel().clear();
++    RegisterBootedContainer(*state, lp.filepath);
+ 
+     Service::AM::FrontendAppletParameters load_parameters{
+         .applet_id = Service::AM::AppletId::Application,

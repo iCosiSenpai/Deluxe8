@@ -1,0 +1,21 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Deluxe8 <build@deluxe8.invalid>
+Date: Sat, 14 Nov 2026 21:54:15 +0100
+Subject: [PATCH] deluxe8: include perf_stats.h in eden-cli
+
+---
+ src/yuzu_cmd/yuzu.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/yuzu_cmd/yuzu.cpp b/src/yuzu_cmd/yuzu.cpp
+index c4d96ec..06bd906 100644
+--- a/src/yuzu_cmd/yuzu.cpp
++++ b/src/yuzu_cmd/yuzu.cpp
+@@ -41,6 +41,7 @@
+ #include <format>
+ #include "deluxe8/deluxe8.h"
+ #include "deluxe8/overlay.h"
++#include "core/perf_stats.h"
+ #endif
+ #include "video_core/gpu.h"
+ #include "video_core/rasterizer_interface.h"

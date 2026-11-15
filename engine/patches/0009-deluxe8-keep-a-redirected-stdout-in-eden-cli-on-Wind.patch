@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Deluxe8 <build@deluxe8.invalid>
+Date: Sun, 15 Nov 2026 01:22:04 +0100
+Subject: [PATCH] deluxe8: keep a redirected stdout in eden-cli on Windows
+
+eden-cli attached to the parent's console and reopened stdout/stderr on
+CONOUT$ whenever the parent had one, which also happened when stdout was a
+pipe or a file: a launcher started from a console (for example the
+launcher's development build) lost every telemetry line. Only borrow the
+parent's console when the standard output is not already redirected.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/yuzu_cmd/yuzu.cpp | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/yuzu_cmd/yuzu.cpp b/src/yuzu_cmd/yuzu.cpp
+index 08f2f71..06a55d8 100644
+--- a/src/yuzu_cmd/yuzu.cpp
++++ b/src/yuzu_cmd/yuzu.cpp
+@@ -219,7 +219,14 @@ extern "C" SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
+     *appstate = state;
+ 
+ #ifdef _WIN32
+-    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
++    // Borrow the parent's console only when the output goes nowhere else: a launcher reading this process's stdout
++    // through a pipe (or a file it was redirected to) would otherwise lose every line to the parent's console.
++    const auto redirected = [](DWORD id) {
++        const HANDLE handle = GetStdHandle(id);
++        return handle != nullptr && handle != INVALID_HANDLE_VALUE && GetFileType(handle) != FILE_TYPE_UNKNOWN &&
++               GetFileType(handle) != FILE_TYPE_CHAR;
++    };
++    if (!redirected(STD_OUTPUT_HANDLE) && AttachConsole(ATTACH_PARENT_PROCESS)) {
+         freopen("CONOUT$", "wb", stdout);
+         freopen("CONOUT$", "wb", stderr);
+     }

@@ -1,0 +1,90 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    name: rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Tauri system packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            crates/nx
+            apps/launcher/src-tauri
+
+      - name: d8-nx
+        working-directory: crates/nx
+        run: |
+          cargo clippy --all-targets -- -D warnings
+          cargo test
+
+      - name: launcher backend
+        working-directory: apps/launcher/src-tauri
+        shell: bash
+        run: |
+          mkdir -p ../dist   # the UI build output; not needed by debug builds, created so no build script trips on it
+          cargo clippy --all-targets -- -D warnings
+          cargo test
+
+  ui:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/launcher
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/launcher/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm build
+
+  hygiene:
+    name: no Nintendo material
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Forbidden file types
+        run: |
+          # AGENT.md rule 1: never commit game files, keys, firmware or extracted content
+          bad=$(git ls-files | grep -iE '\.(nsp|nsz|xci|xcz|nca|ncz|nso|nro|npdm|keys|bin\.enc)$' || true)
+          if [ -n "$bad" ]; then echo "::error::forbidden files in the repository:"; echo "$bad"; exit 1; fi
+      - name: NVIDIA runtime files
+        run: |
+          # AGENT.md rule 3: the DLSS/NGX libraries are downloaded on the player's PC, never committed
+          bad=$(git ls-files | grep -iE '(nvngx|nvsdk_ngx)[^/]*\.(dll|lib|so)$' || true)
+          if [ -n "$bad" ]; then echo "::error::NVIDIA binaries in the repository:"; echo "$bad"; exit 1; fi

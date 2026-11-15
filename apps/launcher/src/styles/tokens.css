@@ -1,0 +1,89 @@
+/*
+ * Deluxe8 design tokens — "pit wall at night".
+ * Colour carries state, not decoration: the four timing-screen sector colours mean
+ * recommended/best (viola), valid/ready (verde), needs attention (giallo), error (rosso).
+ */
+
+@font-face {
+  font-family: 'Archivo';
+  src: url('../assets/fonts/Archivo-Variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../assets/fonts/Archivo-Italic-Variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-style: italic;
+  font-display: block;
+}
+
+:root {
+  /* surfaces */
+  --asfalto: #161b26;
+  --asfalto-2: #1a2030;
+  --pannello: #1e2433;
+  --pannello-2: #252c3e;
+  --linea: #2c3447;
+  --linea-forte: #3a4460;
+
+  /* text */
+  --gesso: #f2efe8;
+  --gesso-2: #b9bcc6;
+  --gesso-3: #7d8396;
+
+  /* state (timing-screen sectors) */
+  --viola: #9b5cff;
+  --verde: #2ed47a;
+  --giallo: #ffd23f;
+  --rosso: #ff3b30;
+  --viola-velo: rgb(155 92 255 / 0.14);
+  --verde-velo: rgb(46 212 122 / 0.12);
+  --giallo-velo: rgb(255 210 63 / 0.12);
+  --rosso-velo: rgb(255 59 48 / 0.12);
+
+  /* kerb */
+  --cordolo-a: #f2efe8;
+  --cordolo-b: #e0362c;
+
+  /* type */
+  --font: 'Archivo', 'Segoe UI', system-ui, sans-serif;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.625rem;
+  --fs-2xl: 2.25rem;
+  --fs-3xl: 3.25rem;
+  --fs-hero: clamp(3.5rem, 8.4vw, 8rem);
+  --lh-body: 1.5;
+  --lh-tight: 0.95;
+
+  /* space */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 72px;
+
+  /* shape: controls < panels; the play button is chamfered, not rounded */
+  --r-ctl: 6px;
+  --r-panel: 10px;
+
+  /* focus is the controller cursor: thick chalk ring, always visible */
+  --focus-ring: 0 0 0 2px var(--asfalto), 0 0 0 5px var(--gesso);
+
+  --t-fast: 110ms;
+  --t-med: 200ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  --tower-w: 232px;
+  --titlebar-h: 40px;
+  --footer-h: 44px;
+}

@@ -1,0 +1,22 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Deluxe8 <build@deluxe8.invalid>
+Date: Sat, 14 Nov 2026 21:41:56 +0100
+Subject: [PATCH] build: define NOMINMAX for clang-cl (desktop LSFG sources)
+
+---
+ src/CMakeLists.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 8f3824f..71cb919 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -64,6 +64,8 @@ add_compile_definitions(EDEN_BUILD_ID="${BUILD_ID}")
+ # static_assert in <xutility>. Use the scalar algorithms instead.
+ if (MSVC AND CXX_CLANG)
+     add_compile_definitions(_USE_STD_VECTOR_ALGORITHMS=0)
++    # Deluxe8: code only built for Android so far (LSFG) uses std::min/std::max next to <windows.h>.
++    add_compile_definitions(NOMINMAX)
+ endif()
+ 
+ # Set compilation flags

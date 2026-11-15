@@ -1,0 +1,18 @@
+name: Feature request
+description: An idea for the launcher, the engines or the documentation.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: The problem it solves first, then the solution you have in mind.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Launcher, Compat engine, Native engine, Graphics, Online rooms, Controllers, Documentation, Other]
+    validations:
+      required: true

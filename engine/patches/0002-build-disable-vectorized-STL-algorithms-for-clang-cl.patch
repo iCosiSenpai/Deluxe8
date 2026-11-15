@@ -1,0 +1,29 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Deluxe8 <build@deluxe8.invalid>
+Date: Sat, 14 Nov 2026 21:10:10 +0100
+Subject: [PATCH] build: disable vectorized STL algorithms for clang-cl
+
+MSVC STL 14.51 (VS 2026) static_asserts in _Find_vectorized when clang reports a
+trivially equality comparable struct whose size is not 1/2/4/8 bytes.
+---
+ src/CMakeLists.txt | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 305c744..361adb0 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -59,6 +59,13 @@ endif()
+ 
+ add_compile_definitions(EDEN_BUILD_ID="${BUILD_ID}")
+ 
++# clang-cl + MSVC STL 14.51+: the vectorized std::find assumes trivially comparable element types are
++# 1/2/4/8 bytes, but clang's __is_trivially_equality_comparable also accepts larger structs, which trips a
++# static_assert in <xutility>. Use the scalar algorithms instead.
++if (MSVC AND CXX_CLANG)
++    add_compile_definitions(_USE_STD_VECTOR_ALGORITHMS=0)
++endif()
++
+ # Set compilation flags
+ if (MSVC AND NOT CXX_CLANG)
+     set(CMAKE_CONFIGURATION_TYPES Debug Release CACHE STRING "" FORCE)

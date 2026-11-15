@@ -1,0 +1,42 @@
+# ── Agent workspace (plans, task lists, action logs, raw research) ──
+.agent/
+
+# ── Local caches: upstream clones, toolchains, downloads ──
+.cache/
+
+# ── Build outputs ──
+/build/
+/out/
+/dist/
+**/target/
+**/node_modules/
+apps/launcher/dist/
+apps/launcher/src-tauri/gen/
+
+# ── NEVER commit user-owned Nintendo material ──
+# (game dumps, keys, firmware, decrypted/extracted content, saves, shader caches)
+*.nsp
+*.nsz
+*.xci
+*.xcz
+*.nca
+*.ncz
+*.nso
+*.nro
+*.npdm
+*.keys
+*.bin.enc
+/user/
+/userdata/
+recomp/generated/
+recomp/extracted/
+
+# ── Editors / OS ──
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
